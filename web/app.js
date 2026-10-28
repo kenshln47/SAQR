@@ -34,7 +34,7 @@ const ICON = {
   pin: S('<path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>'),
   measure: S('<circle cx="5" cy="12" r="2.2"/><circle cx="19" cy="12" r="2.2"/><path d="M7.2 12h9.6"/>'),
   trash: S('<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>'),
-  compass: '<svg viewBox="0 0 24 24"><path d="M12 2.5 16 12h-8z" fill="#ff4d6a"/><path d="M12 21.5 8 12h8z" fill="#7d8a95"/></svg>',
+  compass: '<svg viewBox="0 0 24 24"><path d="M12 2.5 16 12h-8z" fill="#ff453a"/><path d="M12 21.5 8 12h8z" fill="#8e8e93"/></svg>',
   map: S('<path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/>'),
   eye: S('<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>'),
   eyeOff: S('<path d="M3 3l18 18M10.6 5.1Q11.3 5 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4.1M6.6 6.6C3.8 8.4 2 12 2 12s3.6 7 10 7a9.7 9.7 0 0 0 5.4-1.6M9.9 9.9a3 3 0 0 0 4.2 4.2"/>'),
@@ -77,7 +77,7 @@ const STATUS_AR = { queued: "بالانتظار", recon: "فحص أولي", anal
 const TOOL_AR = { view_photo: "فحص الصورة", streetview_near: "Street View · أقرب بانوراما", streetview_views: "Street View · عرض",
   streetview_sweep: "Street View · مسح المنطقة", satellite: "قمر صناعي", terrain_view: "مقارنة التضاريس", geocode: "بحث عن مكان",
   osm_query: "OpenStreetMap", pin_candidate: "تثبيت مرشح", final_answer: "الإجابة النهائية", web_search: "بحث ويب" };
-const COLOR = { high: "#34f5a4", medium: "#ffb547", low: "#9aa7b2", cand: "#ffb547", model: "#7d8a95" };
+const COLOR = { high: "#30d158", medium: "#ff9f0a", low: "#8e8e93", cand: "#ff9f0a", model: "#8e8e93" };
 const cls = (v) => String(v ?? "").replace(/[^a-z_]/gi, "");   // model text used as a class name
 
 const state = {
@@ -99,12 +99,18 @@ function toast(msg, kind = "") {
 }
 
 // ---------------------------------------------------------------- map
+// joins and orders Arabic letters in map labels; without it they draw unjoined and left-to-right
+maplibregl.setRTLTextPlugin(new URL("vendor/mapbox-gl-rtl-text.js", location.href).href, false)?.catch?.(() => {});
 const map = new maplibregl.Map({
   container: "map", style: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
   center: [30, 24], zoom: 1.7, maxPitch: 75, attributionControl: { compact: true }, dragRotate: true,
 });
 let ready = false;
 new ResizeObserver(() => map.resize()).observe(document.body);
+// a zoom "step" must stay the top-level expression, so the Arabic name goes into each of its outputs
+const arabicFirst = (tf) => (tf[0] === "step" && Array.isArray(tf[1]) && tf[1][0] === "zoom"
+  ? tf.map((v, i) => (i >= 2 && i % 2 === 0 ? ["coalesce", ["get", "name:ar"], v] : v))
+  : ["coalesce", ["get", "name:ar"], tf]);
 map.on("error", () => {
   if (ready) return;   // a missing tile later is normal; only a style that never loads needs a word
   $("#mapErr").textContent = "الخريطة ما تحملت: تحتاج إنترنت (CARTO و Esri). باقي صقر يشتغل عادي.";
@@ -123,7 +129,7 @@ map.on("load", () => {
   if (b) {
     map.addLayer({ id: "bld3d", type: "fill-extrusion", source: b.source, "source-layer": b["source-layer"], minzoom: 13,
       paint: {
-        "fill-extrusion-color": ["interpolate", ["linear"], ["coalesce", ["get", "height"], 8], 0, "#0d141b", 40, "#122029", 150, "#183040"],
+        "fill-extrusion-color": ["interpolate", ["linear"], ["coalesce", ["get", "height"], 8], 0, "#2a2b2f", 40, "#34353a", 150, "#414247"],
         "fill-extrusion-height": ["interpolate", ["linear"], ["zoom"], 13, 0, 14.5,
           ["coalesce", ["get", "height"], ["*", ["coalesce", ["get", "building:levels"], 3], 3.4]]],
         "fill-extrusion-base": ["coalesce", ["get", "min_height"], 0],
@@ -136,12 +142,14 @@ map.on("load", () => {
     paint: { "line-color": ["get", "color"], "line-width": 1.3, "line-opacity": 0.85, "line-dasharray": [3, 2] } });
   map.addSource("measure", { type: "geojson", data: fc([]) });
   map.addLayer({ id: "measure-line", type: "line", source: "measure",
-    paint: { "line-color": "#3de7ff", "line-width": 1.8, "line-opacity": 0.95, "line-dasharray": [2, 1.5] } });
-  for (const l of layers) {          // tint Dark Matter toward the HUD's blue-black so the map never reads as a black screen
+    paint: { "line-color": "#0a84ff", "line-width": 2.5, "line-opacity": 0.95, "line-dasharray": [2, 1.2] } });
+  for (const l of layers) {          // lift Dark Matter to neutral graphite land and deep blue water, so the map never reads as a black screen
     try {
-      if (l.type === "background") map.setPaintProperty(l.id, "background-color", "#121a22");
-      else if (l.type === "fill" && /water/.test(l.id)) map.setPaintProperty(l.id, "fill-color", "#070e15");
-      else if (l.type === "line" && /boundar|admin/.test(l.id)) map.setPaintProperty(l.id, "line-color", "#2a5563");
+      if (l.type === "background") map.setPaintProperty(l.id, "background-color", "#1d1e21");
+      else if (l.type === "fill" && /water/.test(l.id)) map.setPaintProperty(l.id, "fill-color", "#0e1924");
+      else if (l.type === "line" && /boundar|admin/.test(l.id)) map.setPaintProperty(l.id, "line-color", "#55565c");
+      // Arabic place names first, the style's own (local / English) name where OSM has no Arabic one
+      if (l.type === "symbol" && Array.isArray(l.layout?.["text-field"])) map.setLayoutProperty(l.id, "text-field", arabicFirst(l.layout["text-field"]));
     } catch { /* layer uses an expression we leave alone */ }
   }
   ready = true;
@@ -727,7 +735,7 @@ function showFinal(f) {
     const lat = +f.lat, lon = +f.lon;
     const place = [f.country, f.region, f.city].filter(Boolean).join(" · ");
     const coords = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
-    r.innerHTML = `<div class="hudlbl ${cls(f.confidence)}"><span>LOCATION FIX</span><i></i>${esc(LEVEL_AR[f.level] || f.level || "")}</div>
+    r.innerHTML = `<div class="hudlbl ${cls(f.confidence)}"><span>الموقع</span>${esc(LEVEL_AR[f.level] || f.level || "")}</div>
       <h2>${esc(place)}</h2>
       <div class="coords"><span>${dms(lat, "N", "S")} ${dms(lon, "E", "W")}</span><span class="dim">${coords}</span>
         <span class="acts"><button id="copyc">${ICON.copy}نسخ</button>
@@ -743,7 +751,7 @@ function showFinal(f) {
     $("#goto").onclick = () => flyTo(lat, lon, f.radius_km);
   } else if ("assessment" in f) {
     const gen = Math.round((+f.ai_generation_likelihood || 0) * 100), mp = Math.round((+f.manipulation_likelihood || 0) * 100);
-    r.innerHTML = `<div class="hudlbl"><span>INTEGRITY SCAN</span></div><h2>${esc(ASSESS_AR[f.assessment] || f.assessment)}</h2>
+    r.innerHTML = `<div class="hudlbl"><span>سلامة الصورة</span></div><h2>${esc(ASSESS_AR[f.assessment] || f.assessment)}</h2>
       ${"ai_generation_likelihood" in f ? `<h4>احتمال التوليد بالذكاء الاصطناعي · ${gen}%</h4><div class="bar2 ${gen > 50 ? "warn" : ""}"><div style="width:${gen}%"></div></div>
       <h4>احتمال التعديل · ${mp}%</h4><div class="bar2 ${mp > 50 ? "warn" : ""}"><div style="width:${mp}%"></div></div>` : ""}
       <p dir="auto">${esc(f.summary_ar)}</p>
@@ -754,7 +762,7 @@ function showFinal(f) {
     $("#seeEla")?.addEventListener("click", () => itab("evidence"));
   } else if ("make" in f) {
     const c = Math.round((+f.confidence || 0) * 100);
-    r.innerHTML = `<div class="hudlbl"><span>VEHICLE ID</span></div><h2>${esc(f.make)} ${esc(f.model)}</h2>
+    r.innerHTML = `<div class="hudlbl"><span>السيارة</span></div><h2>${esc(f.make)} ${esc(f.model)}</h2>
       <div class="meta"><span class="tag">${esc(f.year_range)}</span><span class="tag">${esc(f.body_type)}</span><span class="tag ${c >= 70 ? "high" : "medium"}"><i></i>${c}%</span></div>
       <p dir="auto">${esc(f.summary_ar)}</p>${list("العلامات", f.cues)}${list("سيارات تشبهها", f.alternatives)}`;
   }

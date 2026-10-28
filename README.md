@@ -76,8 +76,9 @@ Cases go to `saqr\cases\`, or to `SAQR_CASES` if set; an install that already ke
 filed as evidence. The browser follows the run over server-sent events and picks up where it left off after a
 reconnect. The server only answers on 127.0.0.1 and rejects requests from other sites.
 
-The interface is a glass HUD over MapLibre GL (vendored in `web/vendor/`, BSD-3), with an Arabic right-to-left
-layout that also works on a phone.
+The interface is a dark frosted-glass layout over MapLibre GL (vendored in `web/vendor/`, BSD-3, with the
+mapbox-gl-rtl-text plugin, BSD-2, so Arabic map labels are joined and ordered right to left; Arabic place names are
+shown where OpenStreetMap has them). It is Arabic right-to-left and also works on a phone.
 
 ## Limits (by design)
 
