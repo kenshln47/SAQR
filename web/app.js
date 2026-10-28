@@ -268,6 +268,10 @@ function renderCaseMarkers() {
   });
 }
 
+function reviewWord(v) {
+  return v === "confirmed" ? "مؤكّد" : v === "possible" ? "ممكن" : v === "dismissed" ? "مستبعد" : "";
+}
+
 function renderActiveMarkers() {
   clear(state.activeMarkers);
   state.cands.filter((c) => okLL(c.lat, c.lon)).forEach((c) => {
@@ -278,8 +282,9 @@ function renderActiveMarkers() {
       <div class="st ${model ? "low" : "medium"}"><i></i>${model ? "تخمين نماذج محلية" : "مرشح"} · ${Math.round((+c.confidence || 0) * 100)}% · ± ${esc(c.radius_km)} كم</div>
       <div class="why">${esc(c.reason)}</div>
       <div class="row"><button type="button" class="yes" data-review="confirmed" data-n="${Number(c.n)}">تأكيد</button>
+        <button type="button" class="mid" data-review="possible" data-n="${Number(c.n)}">ممكن</button>
         <button type="button" class="no" data-review="dismissed" data-n="${Number(c.n)}">استبعاد</button></div>
-      ${c.review ? `<div class="why">${c.review.verdict === "confirmed" ? "مؤكّد" : "مستبعد"}</div>` : ""}</div>`));
+      ${c.review ? `<div class="why">${esc(reviewWord(c.review.verdict))}</div>` : ""}</div>`));
   });
   renderRadii();
 }
@@ -761,8 +766,9 @@ function showFinal(f) {
       <div class="meta"><span class="tag ${cls(f.confidence)}"><i></i>${esc(CONF_AR[f.confidence] || f.confidence)}</span>
         <span class="tag">${esc(LEVEL_AR[f.level] || f.level || "")}</span><span class="tag">± ${esc(f.radius_km)} كم</span></div>
       <div class="review-row"><button type="button" class="yes" data-review="confirmed">تأكيد</button>
+        <button type="button" class="mid" data-review="possible">ممكن</button>
         <button type="button" class="no" data-review="dismissed">استبعاد</button></div>
-      ${f.review ? `<p class="dim">${f.review.verdict === "confirmed" ? "مؤكّد كنقطة صحيحة" : "مستبعد"}</p>` : ""}
+      ${f.review ? `<p class="dim">${esc(reviewWord(f.review.verdict))}${f.review.verdict === "confirmed" ? " كنقطة صحيحة" : ""}</p>` : ""}
       <p dir="auto">${esc(f.summary)}</p>
       ${list("الأدلة الحاسمة", f.clues)}
       ${list("احتمالات ثانية", (f.alternatives || []).map((a) => `${a.place}: ${a.why}`))}
@@ -857,7 +863,7 @@ function handle(ev, live) {
         state.final.review = { verdict: ev.verdict };
         showFinal(state.final);
       }
-      feed("log", "مراجعة", ev.verdict === "confirmed" ? "تأكيد المحلل" : "استبعاد المحلل");
+      feed("log", "مراجعة", ev.verdict === "confirmed" ? "تأكيد المحلل" : ev.verdict === "possible" ? "ممكن، بدون نقطة صحيحة" : "استبعاد المحلل");
       break;
     }
     case "evidence": addEvidence(ev.path, ev.caption); break;
@@ -1322,7 +1328,7 @@ document.addEventListener("click", async (ev) => {
       state.final.review = { verdict };
       showFinal(state.final);
     }
-    toast(verdict === "confirmed" ? "انحفظت كنقطة صحيحة" : "تم الاستبعاد");
+    toast(verdict === "confirmed" ? "انحفظت كنقطة صحيحة" : verdict === "possible" ? "انحفظ كممكن، بدون نقطة صحيحة" : "تم الاستبعاد");
   } catch {
     toast("ما قدرت أوصل لصقر", "err");
   } finally {

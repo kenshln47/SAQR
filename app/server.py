@@ -272,7 +272,7 @@ def cancel_case(cid: str, request: Request):
 
 @app.post("/api/cases/{cid}/review")
 def review_case(cid: str, request: Request, body: dict = Body(default={})):
-    """Confirm writes ground truth. Dismiss marks the pin and leaves any truth in place."""
+    """Confirm writes ground truth. Possible and dismiss mark the pin and leave any truth in place."""
     _local_origin(request)
     case = _case(cid)
     verdict = body.get("verdict")

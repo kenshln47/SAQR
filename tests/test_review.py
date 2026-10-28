@@ -60,6 +60,20 @@ def test_confirm_without_a_pin_fails(tmp_path) -> None:
     assert not (case.dir / "truth.json").exists()
 
 
+def test_possible_does_not_write_or_replace_truth(tmp_path) -> None:
+    case = _case(tmp_path, final={"lat": 24.7, "lon": 46.7, "country": "Saudi Arabia"})
+    saved = case.review("possible")
+    assert saved["final"]["review"]["verdict"] == "possible"
+    assert "truth" not in saved
+    assert not (case.dir / "truth.json").exists()
+    case.review("confirmed")
+    first = case.load()["truth"]["at"]
+    saved = case.review("possible")
+    assert saved["truth"]["at"] == first
+    assert saved["final"]["review"]["verdict"] == "possible"
+    assert json.loads((case.dir / "truth.json").read_text(encoding="utf-8"))["verdict"] == "confirmed"
+
+
 def test_bad_verdict_fails(tmp_path) -> None:
     case = _case(tmp_path, final={"lat": 1, "lon": 2})
     with pytest.raises(ValueError):

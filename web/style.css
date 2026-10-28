@@ -403,6 +403,7 @@ body.has-intel .coordbar { left: calc(var(--intel-w) + 72px); }
 .pop .row button.save:hover { background: var(--accent-hi); }
 .pop .row button.del { color: var(--red); background: var(--red-d); flex: none; padding: 0 12px; }
 .pop .row button.yes, .review-row button.yes { color: var(--green); }
+.pop .row button.mid, .review-row button.mid { color: var(--orange); }
 .pop .row button.no, .review-row button.no { color: var(--red); }
 .review-row { display: flex; gap: 6px; margin: 8px 0; }
 .review-row button { flex: 1; height: 30px; border-radius: 9px; font-size: 12.5px; font-weight: 500; background: var(--fill); }

@@ -201,8 +201,8 @@ class Case:
 
     def review(self, verdict: str, n: int | None = None, lat: float | None = None,
                lon: float | None = None, country: str | None = None) -> dict:
-        """Analyst confirm or dismiss. Confirm writes truth. Dismiss does not replace it."""
-        if verdict not in {"confirmed", "dismissed"}:
+        """Analyst confirm, possible, or dismiss. Only confirm writes truth."""
+        if verdict not in {"confirmed", "possible", "dismissed"}:
             raise ValueError("verdict")
         with self._lock():
             d = self.load()
