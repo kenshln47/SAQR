@@ -34,15 +34,24 @@ _lock = threading.Lock()
 
 
 def catalog() -> dict[str, dict]:
-    """Public model list (no key needed), cached for an hour. The lock is not held during the request."""
+    """Public model list (no key needed), cached for an hour. The lock is not held during the request.
+
+    A failed refresh keeps the previous list. With no list at all, the error propagates so Settings can say so.
+    """
     with _lock:
         fresh = time.time() - _cat["at"] <= 3600 and bool(_cat["models"])
         cached = _cat["models"]
     if fresh:
         return cached
-    r = requests.get(f"{BASE}/models", headers=HEADERS, timeout=30)
-    r.raise_for_status()
-    models = {m["id"]: m for m in r.json().get("data", [])}
+    try:
+        r = requests.get(f"{BASE}/models", headers=HEADERS, timeout=30)
+        r.raise_for_status()
+        models = {m["id"]: m for m in r.json().get("data", [])}
+    except requests.RequestException:
+        with _lock:
+            if _cat["models"]:
+                return _cat["models"]
+        raise
     with _lock:
         _cat["models"] = models
         _cat["at"] = time.time()
@@ -104,8 +113,12 @@ def chat(**body) -> dict:
 
 
 def reasoning(model_id: str, effort: str) -> dict:
-    """Ask for thinking only where the model supports it, so routing never fails on an unknown parameter."""
-    m = catalog().get(model_id) or {}
+    """Ask for thinking only where the model supports it. If the model list is down, skip the parameter."""
+    try:
+        models = catalog()
+    except requests.RequestException:
+        return {}
+    m = models.get(model_id) or {}
     return {"reasoning": {"effort": effort}} if "reasoning" in (m.get("supported_parameters") or []) else {}
 
 
