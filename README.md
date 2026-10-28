@@ -82,8 +82,9 @@ shown where OpenStreetMap has them). It is Arabic right-to-left and also works o
 
 ## Limits (by design)
 
-- Exact points need something to anchor them (text, landmark, distinctive skyline, a covered road). Generic
-  landscapes end at region level with a wide radius; SAQR says so instead of inventing a point.
+- Exact points still need an anchor (text, landmark, distinctive skyline, a covered road). A city can be named
+  from one strong cluster of clues. Generic landscapes stay at region level with a wide radius instead of an invented point.
+  Lookalike Gulf cities are compared explicitly; the tool must not default to Dubai.
 - Not built: identity lookup from email/phone/name, matching home interiors to addresses, rental-listing matching.
   The agent stops at city level for photos centred on private people or private homes.
 - Licence plates are a location clue only by their style and country/region code; the number is never read out,
