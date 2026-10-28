@@ -61,6 +61,19 @@ Fix: default panorama provider `mapillary` (Kartaview and Panoramax stay selecta
 
 Effort: M. Verify: unit tests for the default provider and for the refusal when no key is set.
 
+Closed in `7018f5f` for the Google/Apple/Bing/Yandex gate. Esri is still `H-ESRI-01`.
+
+### [H-GEOCLIP-01] HIGH — skipping `prior` drops GeoCLIP (MIT), not only StreetCLIP
+
+`recon_skip_arg()` returns `calib,prior` whenever `SAQR_ALLOW_NC_MODELS` is unset (`app/licensing.py`). GeoInt `scripts/recon.py` runs `prior.py` as one step (`prior.py` default `--models streetclip,geoclip`). GeoCLIP is MIT. StreetCLIP is the only non-commercial weight in that step. The commercial skip removes both, so the no-key path has no local coordinate at all (`app/agent.py` errors when `prior.json` has no lat).
+
+What breaks: a licence fix shipped as a silent accuracy regression. Trigger: any commercial run, including one with an API key, because recon never writes `work/recon/prior/prior.json`.
+
+Fix: measure prior-off vs GeoCLIP-only vs StreetCLIP+GeoCLIP in phase 2. If the gap is material, buy a StreetCLIP licence or call `prior.py --models geoclip` and keep StreetCLIP out. Do not leave the full skip in place once that measurement exists.
+
+Effort: M. Verify: a bench score with the three prediction files, and a commercial argv that still requests GeoCLIP.
+
+
 ### [B-PRIV-01] BLOCKER — shipped modules contradict the published limits and identify private people
 
 README lines 87-91 say private homes stop at city level, and that a plate number is never read, searched, or recorded. The code does the opposite.

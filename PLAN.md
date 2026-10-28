@@ -17,12 +17,21 @@ No code changes. Findings opened: every ID in `AUDIT.md`. Findings closed: none.
 | 3 | B-GGL-01 | DONE `7018f5f` |
 | 4 | M-BING-01 | DONE `7018f5f` (same commit: one key does not unlock the other closed providers) |
 
-Left open on purpose: `B-PRIV-01`, `H-PROMPT-01`. Not modified.
+Opened on this branch, not closed: `H-GEOCLIP-01`. `--skip calib,prior` also drops GeoCLIP (MIT). Phase 2 measures it. A full skip is not an acceptable end state if that cost is material.
+
+Left open on purpose: `B-PRIV-01`, `H-PROMPT-01`. The README now describes those modes as they are. The code was not extended.
 Left open because it is a different vendor: `H-ESRI-01`.
 
 ## Phase 2 — accuracy
 
-`H-RANK-01`. Add `bench/` (300–500 held-out photos, stratified). Metrics: median km, % <1 km, % <25 km, % country-correct, ECE for the model's confidence and radius. Wire to geoint `photo_session.py` + `bench.py` once that skill is vendored (phase 4). CI gate. Confirm/dismiss on a candidate writes ground truth into the case. Re-rank `OR_DEFAULT` from that run, not from the October table.
+`H-RANK-01`, `H-GEOCLIP-01`.
+Score median km, % <1 km, % <25 km, % country-correct, and ECE for confidence and for the stated radius.
+Three prior settings: off, GeoCLIP only (`prior.py --models geoclip`), StreetCLIP+GeoCLIP (non-commercial opt-in).
+If GeoCLIP-only is close to both models, keep StreetCLIP out. If the gap is large, the choice is a commercial StreetCLIP licence or another permissive model, not a silent skip.
+Wire scoring through GeoInt `bench.py score` and ground truth through `photo_session.py truth`.
+Confirm / dismiss on a candidate writes that truth into the case.
+Do not re-rank `OR_DEFAULT` from the October table. Re-rank only from a run this bench actually produces.
+`bench.py make-streetview` fetches keyless Google panoramas. Do not use it to build the corpus.
 
 ## Phase 3 — reliability
 

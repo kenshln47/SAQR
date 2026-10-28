@@ -46,10 +46,13 @@ runs only when that option is on. Country-level guesses need either the opt-in p
 
 | Module | What it does |
 |---|---|
-| تحديد المنطقة (Find Region) | Quick pass: country / region / city with an honest radius |
-| تحديد الشارع (Find Street) | Deep pass: Street View sweeps (MegaLoc on the GPU), terrain skyline matching, satellite evidence |
+| تحديد المنطقة (Find Region) | Quick pass: country / region / city with an honest radius. Private homes and private people stop at city level in this mode. |
+| تحديد الشارع (Find Street) | Deep pass: street-level sweeps (MegaLoc), terrain skyline matching, satellite evidence. Same city-level stop for a private home. |
+| تحديد مكان خاص (Private place) | Separate prompt. It does not stop at the city. It can search listings (Airbnb, aqar.fm, Bayut, Haraj) and pin a building when a listing or a text anchor matches the photo. It may read and search a plate number as an extra anchor. |
+| من هذا الشخص؟ (Who is this?) | Photo and/or an email, a phone number, or a name. Web search and Gravatar. Files a name, a role, and accounts when the search results support them. Needs an API key. |
+| لوحة السيارة (Plate) | Reads the plate characters, names the vehicle, and searches that plate text. An owner name is filed only when a page shows one. Needs an API key. |
 | التحقق من الصورة (Verify Image) | Metadata + error level analysis + an AI reading of manipulation / AI-generation signals |
-| تحديد السيارة (Identify Car) | Make, model, year range from exterior or interior (plates are ignored; needs a key) |
+| تحديد السيارة (Identify Car) | Make, model, year range from exterior or interior. This module's prompt does not read the plate. Needs an API key. |
 | القضايا (Cases) | Every case on one map; click to reopen, replay its live log, stop or re-run it |
 
 In a case: **stop** ends a run after the current step, **re-run** starts a new case from the same photo with another
@@ -59,8 +62,7 @@ instead of being overwritten.
 
 ## Reverse image search
 
-"بحث عكسي" (on by default for Find Region / Find Street) uploads the photo to Yandex and Baidu to look for other
-copies of it. Untick it before a run, or in the re-run menu, when the photo must not leave this computer.
+"بحث عكسي" defaults to on for Find Region, Find Street, Private place, and Plate. It uploads the photo to Yandex and Baidu to look for other copies of it. Untick it before a run, or in the re-run menu, when the photo must not leave this computer.
 
 ## Case files
 
@@ -73,8 +75,9 @@ Cases go to `saqr\cases\`, or to `SAQR_CASES` if set; an install that already ke
 
 `app/agent.py` runs the geoint skill's recon, puts the model guess on the map, then gives the AI model
 (Claude direct: `claude-opus-5-5`, adaptive thinking; or any OpenRouter model via `app/openrouter.py`) these tools:
-`view_photo`, `web_search`, `geocode`, `osm_query`, `streetview_near`, `streetview_views`, `streetview_sweep`,
-`satellite`, `terrain_view`, `pin_candidate`, `final_answer`. Every image a tool makes is shown to the model and
+`view_photo`, `web_search`, `geocode`, `osm_query`, `listing_search`, `streetview_near`, `streetview_views`, `streetview_sweep`,
+`satellite`, `terrain_view`, `pin_candidate`, `final_answer`. Person and plate modes use a separate loop: `view_photo`,
+`web_lookup`, `gravatar_lookup` (person only), and a single file call. Every image a tool makes is shown to the model and
 filed as evidence. The browser follows the run over server-sent events and picks up where it left off after a
 reconnect. The server only answers on 127.0.0.1 and rejects requests from other sites.
 
@@ -87,10 +90,8 @@ shown where OpenStreetMap has them). It is Arabic right-to-left and also works o
 - Exact points still need an anchor (text, landmark, distinctive skyline, a covered road). A city can be named
   from one strong cluster of clues. Generic landscapes stay at region level with a wide radius instead of an invented point.
   Lookalike Gulf cities are compared explicitly; the tool must not default to Dubai.
-- Not built: identity lookup from email/phone/name, matching home interiors to addresses, rental-listing matching.
-  The agent stops at city level for photos centred on private people or private homes.
-- Licence plates are a location clue only by their style and country/region code; the number is never read out,
-  searched or recorded, and the car module ignores the plate entirely.
+- Find Region and Find Street stop at city level when the photo is a private person or a private home, and they do not pin the building. Private-place mode does not keep that stop.
+- Person search from a photo, an email, a phone number, or a name is built. So is listing search, and so is reading a plate number in the plate module and in private-place mode. The car module does not read the plate. Find Region / Find Street treat a plate only by style, colours, and country or region code.
 - Street-level search defaults to Mapillary. Kartaview and Panoramax are the other open providers.
   Google Street View, Google satellite tiles, and Apple, Bing, and Yandex panoramas stay off until their own
   key is set: `SAQR_GOOGLE_KEY` or `GOOGLE_MAPS_API_KEY`, `SAQR_APPLE_KEY`, `SAQR_BING_KEY`, `SAQR_YANDEX_KEY`.
