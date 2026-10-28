@@ -52,8 +52,17 @@ The event tail is an in-memory index. `case.json` is cached after the first read
 
 ## Phase 4 — packaging
 
-`M-TEST-01`, `M-PKG-01`, `M-GEOINT-01`, `M-IMPORT-01`, `L-PHOTO-01`.
-`pyproject.toml` already holds pytest and ruff settings from phase 1. `.github/workflows/test.yml` (`dcd8ba2`) runs those tests without torch. Still missing: `uv.lock`, the dependency list, Dockerfile, `scripts/setup.sh` next to the `.bat` files. Vendor or fetch the geoint skill so a clone runs. Stop creating directories and failing cases at import time.
+Status: DONE on `harden/commercial`.
+
+| ID | Status |
+|---|---|
+| M-IMPORT-01 | DONE `93e3ee6` |
+| L-PHOTO-01 | DONE `8770f47` |
+| M-TEST-01 | DONE `88747fb` (pytest, ruff, and the workflow were already in the tree; this commit locks them in) |
+| M-PKG-01 | DONE `c63e321` |
+| M-GEOINT-01 | DONE `d5414fd` |
+
+`uv.lock` resolves the `requirements.txt` pins. Torch and `streetlevel` stay outside that lock: setup installs torch itself, and streetlevel with `--no-deps`, same as `setup.bat`. The skill is cloned, not vendored.
 
 ## Phase 5 — product
 

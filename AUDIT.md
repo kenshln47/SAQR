@@ -203,17 +203,25 @@ Closed in `d3e6562`.
 
 Fix: create the directory in `main()`, recover only from the process that owns the port. Effort: S. Phase 4 tests will trip this immediately.
 
+Closed in `93e3ee6`. Import does not create the directory and does not mark a live case failed. `main()` binds 127.0.0.1 first.
+
 ### [M-TEST-01] MEDIUM — no tests, no ruff config, no CI
 
 No `tests/`, no `pyproject.toml`, no workflow. `pytest` and `ruff` are not installed here. Phase definition of done cannot be met until they exist. Effort: M. Phase 4, with the minimum runner added as soon as phase 1 needs a green `pytest`.
+
+Closed in `88747fb`. The suite, `pyproject.toml`, and `.github/workflows/test.yml` (`dcd8ba2`) are in the tree. The new test fails if they disappear. CI still installs pytest, ruff, and pillow only.
 
 ### [M-PKG-01] MEDIUM — Windows-only bootstrap
 
 `setup.bat` and `run.bat` are the only entrypoints. `setup.bat:6-9` assumes `uv`, Python 3.12, and a CUDA wheel URL. A Linux or macOS clone has no command. Effort: M. Phase 4.
 
+Closed in `c63e321`. `scripts/setup.sh` and `scripts/run.sh` are the Linux and macOS entrypoints. `uv.lock` matches the requirement pins. Torch is still installed by the setup script, not by the lock.
+
 ### [M-GEOINT-01] MEDIUM — a fresh clone cannot geolocate
 
 `GEOINT` defaults to `~/.claude/skills/geoint` (`app/config.py:41-42`). `run_script` returns rc 127 if the script is missing (`app/tools.py:51-52`). The status endpoint reports `geoint_ok` (`app/server.py:72`) and nothing installs the skill. Effort: L. Phase 4.
+
+Closed in `d5414fd`. Setup clones the MIT skill when `scripts/recon.py` is missing and does not vendor it.
 
 ### [M-PRUNE-01] MEDIUM — context control is "keep 6 images" and a 20k-character cut
 
@@ -240,6 +248,8 @@ Closed in `648b7bb`. A failed refresh keeps the previous list. With no list, `re
 ### [L-PHOTO-01] LOW — `Case.photo` indexes an empty glob
 
 `app/cases.py:70-72` returns `files[0]` with no empty check. Trigger: `original/` deleted by hand, then rerun (`app/server.py:219` calls `old.photo.read_bytes()`). Effort: S.
+
+Closed in `8770f47`. `Case.photo` raises `FileNotFoundError`. Rerun returns 409.
 
 ### [L-REPORT-FONT] LOW — the HTML report names a font it does not load
 
