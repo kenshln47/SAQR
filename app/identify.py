@@ -295,7 +295,8 @@ def run_person(case: Case) -> None:
             case.emit("stage", stage="recon", text="إدخال نصي: نبحث مباشرة")
             recon_md = ""
         else:
-            case.emit("stage", stage="recon", text="الفحص الأولي: بيانات الملف · قراءة النص · بحث عكسي")
+            rev = bool(d.get("rev", False))
+            case.emit("stage", stage="recon", text="الفحص الأولي: بيانات الملف · قراءة النص" + (" · بحث عكسي" if rev else ""))
             rec = T.recon(case)
             for p, cap in rec.images:
                 case.add_evidence(p, cap)

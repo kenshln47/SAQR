@@ -80,7 +80,7 @@ def _ll(lat: float, lon: float) -> str:
 def recon(case: Case) -> ToolOut:
     """First local pass: metadata, OCR, reverse search, object crops, world prior."""
     args = [str(case.photo), "--out-dir", "recon", "--skip", recon_skip_arg()]
-    if not case.load().get("rev", True):
+    if not case.load().get("rev", False):
         args.append("--no-rev")
     rc, out = run_script(case, "recon.py", args, use_uv=True, timeout=1800)
     # recon.py --skip cannot drop StreetCLIP and keep GeoCLIP. Call GeoCLIP alone.

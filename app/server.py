@@ -205,7 +205,7 @@ def _new(name: str, data: bytes, mode: str, **extra) -> dict:
 
 @app.post("/api/cases")
 async def new_case(request: Request, photo: UploadFile | None = File(None), mode: str = Form("region"),
-                   rev: bool = Form(True), query: str = Form("")):
+                   rev: bool = Form(False), query: str = Form("")):
     _local_origin(request)
     if mode not in MODES:
         raise HTTPException(400, "unknown mode")
@@ -237,7 +237,7 @@ def rerun_case(cid: str, request: Request, body: dict = Body(default={})):
     except FileNotFoundError:
         raise HTTPException(409, "الصورة الأصلية مو موجودة، ما أقدر أعيد التحليل")
     return _new(name, raw, mode,
-                rev=bool(body.get("rev", d.get("rev", True))), rerun_of=old.id,
+                rev=bool(body.get("rev", d.get("rev", False))), rerun_of=old.id,
                 query=d.get("query", ""), text_only=bool(d.get("text_only")))
 
 

@@ -74,7 +74,7 @@ instead of being overwritten.
 
 ## Reverse image search
 
-"بحث عكسي" defaults to on for Find Region, Find Street, Private place, and Plate. It uploads the photo to Yandex and Baidu to look for other copies of it. Untick it before a run, or in the re-run menu, when the photo must not leave this computer.
+"بحث عكسي" defaults to off for Find Region, Find Street, Private place, and Plate. Tick it only when the photo may leave this computer. It then uploads the photo to Yandex and Baidu to look for other copies of it. A case that already stored `rev: true` stays on, including on re-run. A browser that already saved the checkbox as on keeps that choice.
 
 ## Case files
 

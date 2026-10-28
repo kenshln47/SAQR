@@ -199,7 +199,7 @@
       <button class="mode" data-mode="verify"><span data-i="shield"></span><b>التحقق من الصورة</b><small>تعديل · توليد بالذكاء</small></button>
       <button class="mode" data-mode="car"><span data-i="car"></span><b>هوية السيارة</b><small>الماركة · الموديل · السنة</small></button>
     </div>
-    <label class="opt" id="revRow"><input type="checkbox" id="revOpt" checked>
+    <label class="opt" id="revRow"><input type="checkbox" id="revOpt">
       <span><b>بحث عكسي أونلاين</b><small>يرسل الصورة لـ Yandex و Baidu عشان يلقى نسخ منها. شيل العلامة لو الصورة حساسة.</small></span></label>
     <label class="opt hidden" id="queryRow"><span data-i="user" class="ico"></span>
       <input id="queryInput" class="field" dir="auto" placeholder="إيميل · جوال · اسم (اختياري)">
@@ -263,7 +263,7 @@
       <p><b>الأدوات:</b> ضع دبوس لتعليم نقطة، وأداة القياس تحسب المسافة بين النقاط. <span class="mono">Esc</span> يرجعك لأداة التحديد ويبدأ قياس جديد.</p>
       <p><b>إيقاف وإعادة:</b> زر الإيقاف يوقف التحليل بعد الخطوة الحالية. زر الإعادة يحلل نفس الصورة من جديد بنوع ثاني أو بالنموذج اللي اخترته الحين، والقضية القديمة تبقى للمقارنة.</p>
       <p><b>مفتاح API:</b> بدونه يشتغل بالنماذج المحلية بس (دولة/منطقة تقريبية). من الإعدادات ⚙ اختر OpenRouter (أي نموذج: Claude أو GPT أو Gemini…) أو Anthropic مباشرة، والصق مفتاحك.</p>
-      <p><b>البحث العكسي:</b> لو تركته شغال، الصورة تنرسل لـ Yandex و Baidu. شيله من نافذة الإضافة للصور الحساسة.</p>
+      <p><b>البحث العكسي:</b> مطفي افتراضياً. إذا شغلته، الصورة تنرسل لـ Yandex و Baidu.</p>
       <p class="dim">ما يحدد بيوت أشخاص ولا هويات: يوقف على مستوى المدينة في الصور الخاصة. من لوحة السيارة يستخدم شكلها ورمز الدولة أو المنطقة بس، وما يقرأ رقمها ولا يبحث فيه.</p>
     </div>
   </div>

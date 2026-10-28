@@ -286,7 +286,7 @@ def finish(case: Case, status: str, text: str, error: str = "") -> None:
 
 def run_geolocate(case: Case, mode: str) -> None:
     try:
-        rev = case.load().get("rev", True)
+        rev = case.load().get("rev", False)
         case.update(status="recon", engine=engine_label() if has_ai() else "local")
         steps = "بيانات الملف · قراءة النص · كشف العناصر · توقع النماذج" + (" · بحث عكسي أونلاين (Yandex و Baidu)" if rev else "")
         case.emit("stage", stage="recon", text=f"الفحص الأولي: {steps}")

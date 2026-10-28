@@ -942,7 +942,7 @@ async function openCase(id) {
   $("#iTime").textContent = (c.created || "").slice(0, 16).replace("T", " ");
   $("#iEngine").textContent = c.engine ? `المحرك: ${c.engine}${c.rerun_of ? " · إعادة تحليل" : ""}` : "";
   paintCost(c.cost);
-  $("#rerunRev").checked = c.rev !== false && ["region", "street", "private", "plate"].includes(c.mode);   // only a choice the user made carries over
+  $("#rerunRev").checked = c.rev === true && ["region", "street", "private", "plate"].includes(c.mode);   // only an explicit yes carries over
   const { events = [], ...meta } = c;
   if (!state.cases.some((x) => x.id === id)) state.cases.unshift(meta);
   renderSources(); renderCaseMarkers();
@@ -1217,7 +1217,7 @@ function init() {
     state.mode = b.dataset.mode;
     $$(".mode").forEach((x) => x.classList.toggle("active", x === b)); updateRun();
   }));
-  $("#revOpt").checked = store.get("rev", true);
+  $("#revOpt").checked = store.get("rev", false);
   $("#revOpt").onchange = (e) => store.set("rev", e.target.checked);
   $("#queryInput").oninput = updateRun;
   $("#run").onclick = runCase;
