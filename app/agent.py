@@ -31,7 +31,9 @@ Method
 6. Verify: compare invariant features (ridgelines, building outlines, pole positions, curbs), not cars or foliage.
    terrain_view renders the elevation-model skyline for a camera point and heading, stacked over the photo.
    satellite shows the camera area from above. Each confirmed match should leave an evidence image.
-7. Precision needs two independent constraints. A radius under 100 m needs a street-level match on ≥3 features.
+7. Leave a little room. A city can be filed from one strong cluster (readable text, or architecture plus climate) without waiting for a second independent constraint. For lookalike Gulf cities (Riyadh, Dubai, Doha, Abu Dhabi), compare them in the shortlist and put the rejected ones in alternatives; never default to the most famous skyline.
+   A street answer is allowed from one strong clue: a unique readable place name, or a street-level match on 2 features, with medium confidence and an honest radius.
+   A radius under 100 m needs a street-level match on at least 2 features, or one name that geocodes to a single place. If that bar is missed, widen the radius and still file the best area. Do not invent a building pin for a generic landscape.
 8. Never fabricate verification. If you did not run the tool, the claim is an unverified estimate.
 9. One answer, no midpoints between rival candidates. Put rivals in alternatives with the test that separates them.
 
@@ -49,7 +51,7 @@ Limits you must keep
 MODE_HINT = {
     "region": "Mode: FIND REGION (quick). Aim for country, region and city with an honest radius. Use at most ~12 tool calls.",
     "street": ("Mode: FIND STREET (deep). Push to the street or camera point when the evidence allows: narrow, then "
-               "street-level checks, sweeps, terrain and satellite evidence. Stop when two independent constraints agree."),
+               "street-level checks, sweeps, terrain and satellite evidence. Stop when one strong constraint is confirmed, or two weaker ones agree. If neither holds, still file the best city or district with a wider radius."),
 }
 
 NUM = {"type": "number"}
