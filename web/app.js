@@ -41,6 +41,8 @@ const ICON = {
   chev: S('<path d="m6 9 6 6 6-6"/>'),
   shield: S('<path d="M12 3 5 6v5c0 4.5 3 8.5 7 10 4-1.5 7-5.5 7-10V6z"/><path d="m9 12 2 2 4-4"/>'),
   car: S('<path d="M4 15.5V12l2-5h12l2 5v3.5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/><path d="M4 12h16M6.5 16.5V19M17.5 16.5V19"/><circle cx="8" cy="14.2" r=".6" fill="currentColor"/><circle cx="16" cy="14.2" r=".6" fill="currentColor"/>'),
+  home: S('<path d="M4 11 12 4l8 7v9H4z"/><path d="M9.5 20v-6h5v6"/>'),
+  user: S('<circle cx="12" cy="8" r="4"/><path d="M4.5 20c1.6-3.6 4.3-5.4 7.5-5.4s5.9 1.8 7.5 5.4"/>'),
   camera: S('<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>'),
   upload: S('<path d="M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/>'),
   copy: S('<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/>'),
@@ -61,9 +63,12 @@ function icons(root = document) {
 }
 
 // ---------------------------------------------------------------- vocabulary
-const MODE_LABEL = { region: "تحديد المنطقة", street: "تحديد الشارع", verify: "التحقق من الصورة", car: "هوية السيارة" };
+const MODE_LABEL = { region: "تحديد المنطقة", street: "تحديد الشارع", private: "تحديد مكان خاص",
+  verify: "التحقق من الصورة", car: "هوية السيارة", person: "من هذا الشخص؟", plate: "لوحة السيارة" };
 const GROUPS = [
-  { key: "geo", title: "تحديد الموقع", icon: "globe", modes: ["region", "street"] },
+  { key: "geo", title: "تحديد الموقع", icon: "globe", modes: ["region", "street", "private"] },
+  { key: "person", title: "الأشخاص", icon: "user", modes: ["person"] },
+  { key: "plate", title: "اللوحات", icon: "car", modes: ["plate"] },
   { key: "verify", title: "التحقق من الصور", icon: "shield", modes: ["verify"] },
   { key: "car", title: "هوية السيارة", icon: "car", modes: ["car"] },
 ];
@@ -76,13 +81,15 @@ const ASSESS_AR = { likely_genuine: "غالباً أصلية", possibly_manipula
 const STATUS_AR = { queued: "بالانتظار", recon: "فحص أولي", analysing: "يحلل", done: "خلص", stopped: "انوقف", error: "خطأ" };
 const TOOL_AR = { view_photo: "فحص الصورة", streetview_near: "Street View · أقرب بانوراما", streetview_views: "Street View · عرض",
   streetview_sweep: "Street View · مسح المنطقة", satellite: "قمر صناعي", terrain_view: "مقارنة التضاريس", geocode: "بحث عن مكان",
-  osm_query: "OpenStreetMap", pin_candidate: "تثبيت مرشح", final_answer: "الإجابة النهائية", web_search: "بحث ويب" };
+  osm_query: "OpenStreetMap", pin_candidate: "تثبيت مرشح", final_answer: "الإجابة النهائية", web_search: "بحث ويب",
+  listing_search: "بحث في الإعلانات", web_lookup: "بحث ويب (بدون مفتاح)", gravatar_lookup: "Gravatar",
+  file_person: "الجواب النهائي", file_plate: "الجواب النهائي" };
 const COLOR = { high: "#30d158", medium: "#ff9f0a", low: "#8e8e93", cand: "#ff9f0a", model: "#8e8e93" };
 const cls = (v) => String(v ?? "").replace(/[^a-z_]/gi, "");   // model text used as a class name
 
 const state = {
   mode: "region", file: null, blob: null, uploading: false, cases: [], sig: "", active: null, es: null, openTok: 0,
-  hidden: new Set(store.get("hidden", [])), filters: store.get("filters", { geo: true, verify: true, car: true, pins: true }),
+  hidden: new Set(store.get("hidden", [])), filters: { geo: true, person: true, plate: true, verify: true, car: true, pins: true, ...store.get("filters", {}) },
   closed: new Set(store.get("closed", [])),
   board: { pins: [], notes: "" }, boardLoaded: false, savePending: false,
   tool: "select", lines: [], drawing: false,
@@ -240,7 +247,7 @@ function closePopups() {   // through the API: removing the DOM would leave MapL
 }
 
 function geoCases() {
-  return state.cases.filter((c) => ["region", "street"].includes(c.mode)).slice().sort((a, b) => (a.created < b.created ? -1 : 1));
+  return state.cases.filter((c) => ["region", "street", "private"].includes(c.mode)).slice().sort((a, b) => (a.created < b.created ? -1 : 1));
 }
 const caseNo = (id) => geoCases().findIndex((c) => c.id === id) + 1;
 
@@ -394,6 +401,8 @@ function caseSummary(c) {
   if (c.status === "error") return { text: c.error ? `خطأ: ${c.error}` : "صار خطأ", cls: "r" };
   if (RUNNING.includes(c.status)) return { text: `${STATUS_AR[c.status] || c.status}…`, cls: "run" };
   if (!f) return { text: c.status === "stopped" ? "انوقف قبل الجواب" : "ما طلع جواب", cls: "" };
+  if ("found" in f) return { text: f.found ? `${f.name || "شخص"}${f.role ? " · " + f.role : ""}` : "ما تحدد شخص", cls: f.found ? (f.confidence === "high" ? "g" : "a") : "r" };
+  if (f.plate) return { text: `${f.plate}${f.vehicle ? " · " + f.vehicle : ""}`, cls: "a" };
   if (f.country) return { text: [f.country, f.region, f.city].filter(Boolean).join(" · "), cls: { high: "g", medium: "a" }[f.confidence] || "r" };
   if (f.assessment) return { text: ASSESS_AR[f.assessment] || f.assessment, cls: f.assessment === "likely_genuine" ? "g" : f.assessment === "inconclusive" ? "" : "a" };
   if (f.make) return { text: `${f.make} ${f.model} ${f.year_range || ""}`, cls: (+f.confidence || 0) >= 0.7 ? "g" : "a" };
@@ -569,6 +578,10 @@ function updateEngine(s) {
   if (!s.claude && state.mode === "car") $('.mode[data-mode="region"]').click();
   $("#modeHint").classList.toggle("hidden", s.claude);
   $('#rerunMenu [data-mode="car"]').disabled = !s.claude;
+  [["person", "صورة · إيميل · جوال · اسم"], ["plate", "قراءة اللوحة · المركبة"]].forEach(([m, t]) => {
+    const b = $(`.mode[data-mode="${m}"]`); b.classList.toggle("needkey", !s.claude); $("small", b).textContent = s.claude ? t : "يحتاج مفتاح API";
+    $(`#rerunMenu [data-mode="${m}"]`).disabled = !s.claude;
+  });
   $("#rerunEng").textContent = s.ready ? `بيستخدم ${s.label}` : "بدون مفتاح: النماذج المحلية بس";
   if (s.cases_dir) {
     $("#helpDir").textContent = s.cases_dir;
@@ -765,6 +778,22 @@ function showFinal(f) {
     r.innerHTML = `<div class="hudlbl"><span>السيارة</span></div><h2>${esc(f.make)} ${esc(f.model)}</h2>
       <div class="meta"><span class="tag">${esc(f.year_range)}</span><span class="tag">${esc(f.body_type)}</span><span class="tag ${c >= 70 ? "high" : "medium"}"><i></i>${c}%</span></div>
       <p dir="auto">${esc(f.summary_ar)}</p>${list("العلامات", f.cues)}${list("سيارات تشبهها", f.alternatives)}`;
+  } else if ("found" in f) {
+    const acc = (f.accounts || []).map((a) => `${a.site}${a.handle ? " · " + a.handle : ""}: ${a.why}`);
+    r.innerHTML = `<div class="hudlbl"><span>الشخص</span>${esc(CONF_AR[f.confidence] || "")}</div>
+      <h2>${esc(f.found ? f.name : "ما تحدد شخص")}</h2>
+      ${f.role ? `<div class="meta"><span class="tag">${esc(f.role)}</span>${f.place ? `<span class="tag">${esc(f.place)}</span>` : ""}</div>` : ""}
+      <p dir="auto">${esc(f.summary)}</p>${list("حسابات مرجّحة", acc)}
+      ${list("الأدلة", f.evidence)}${list("ما تحقق منه", f.unverified)}`;
+  } else if ("plate" in f) {
+    r.innerHTML = `<div class="hudlbl"><span>اللوحة</span>${esc(CONF_AR[f.confidence] || "")}</div>
+      <h2 dir="ltr">${esc(f.plate)}</h2>
+      <div class="meta">${f.country ? `<span class="tag">${esc(f.country)}</span>` : ""}${f.plate_type ? `<span class="tag">${esc(f.plate_type)}</span>` : ""}</div>
+      <p dir="auto">${esc(f.summary)}</p>
+      ${list("المركبة", [f.vehicle])}
+      ${list("الموقع من شكل اللوحة", [f.region_hint])}
+      ${list("المالك", [f.owner ? `${f.owner} — ${f.owner_note || ""}` : (f.owner_note || "غير متاح علناً")])}
+      ${list("الأدلة", f.evidence)}${list("ما تحقق منه", f.unverified)}`;
   }
 }
 
@@ -872,7 +901,7 @@ async function openCase(id) {
   $("#iMode").textContent = MODE_LABEL[c.mode] || c.mode;
   $("#iTime").textContent = (c.created || "").slice(0, 16).replace("T", " ");
   $("#iEngine").textContent = c.engine ? `المحرك: ${c.engine}${c.rerun_of ? " · إعادة تحليل" : ""}` : "";
-  $("#rerunRev").checked = c.rev !== false && ["region", "street"].includes(c.mode);   // only a choice the user made carries over
+  $("#rerunRev").checked = c.rev !== false && ["region", "street", "private", "plate"].includes(c.mode);   // only a choice the user made carries over
   const { events = [], ...meta } = c;
   if (!state.cases.some((x) => x.id === id)) state.cases.unshift(meta);
   renderSources(); renderCaseMarkers();
@@ -958,16 +987,22 @@ function pickFile(f) {
   updateRun();
 }
 function updateRun() {
-  $("#run").disabled = !state.file || state.uploading;
-  $("#runLabel").textContent = state.uploading ? "جاري الرفع…" : state.file ? `ابدأ · ${MODE_LABEL[state.mode]}` : "اختر صورة";
-  $("#revRow").classList.toggle("hidden", !["region", "street"].includes(state.mode));
+  const person = state.mode === "person";
+  $("#queryRow").classList.toggle("hidden", !person);
+  const typed = person && $("#queryInput").value.trim();
+  $("#run").disabled = (!state.file && !typed) || state.uploading;
+  $("#runLabel").textContent = state.uploading ? "جاري الرفع…"
+    : state.file ? `ابدأ · ${MODE_LABEL[state.mode]}` : typed ? `ابدأ · ${MODE_LABEL.person}` : "اختر صورة";
+  $("#revRow").classList.toggle("hidden", !["region", "street", "private", "plate"].includes(state.mode));
 }
 async function runCase() {
-  if (!state.file || state.uploading) return;
+  if ((!state.file && !(state.mode === "person" && $("#queryInput").value.trim())) || state.uploading) return;
   state.uploading = true; updateRun();
   $("#runMsg").classList.add("hidden");
   const fd = new FormData();
-  fd.append("photo", state.file, state.file.name); fd.append("mode", state.mode);
+  if (state.file) fd.append("photo", state.file, state.file.name);
+  fd.append("mode", state.mode);
+  fd.append("query", state.mode === "person" ? $("#queryInput").value.trim() : "");
   fd.append("rev", $("#revOpt").checked ? "true" : "false");
   try {
     const res = await fetch("/api/cases", { method: "POST", body: fd });
@@ -1143,6 +1178,7 @@ function init() {
   }));
   $("#revOpt").checked = store.get("rev", true);
   $("#revOpt").onchange = (e) => store.set("rev", e.target.checked);
+  $("#queryInput").oninput = updateRun;
   $("#run").onclick = runCase;
 
   $("#helpBtn").onclick = () => $("#helpModal").classList.remove("hidden");

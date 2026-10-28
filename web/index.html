@@ -39,6 +39,8 @@
       <button class="chip" id="filterBtn" title="فلتر"><span data-i="filter" class="ico"></span>فلتر <span class="badge" id="filterN">4</span></button>
       <div class="menu hidden" id="filterMenu">
         <label><input type="checkbox" data-f="geo" checked> تحديد الموقع</label>
+        <label><input type="checkbox" data-f="person" checked> الأشخاص</label>
+        <label><input type="checkbox" data-f="plate" checked> اللوحات</label>
         <label><input type="checkbox" data-f="verify" checked> التحقق من الصور</label>
         <label><input type="checkbox" data-f="car" checked> هوية السيارة</label>
         <label><input type="checkbox" data-f="pins" checked> دبابيس المستخدم</label>
@@ -109,6 +111,9 @@
           <div class="mh">أعد تحليل نفس الصورة</div>
           <button data-mode="region"><span data-i="globe"></span>تحديد المنطقة</button>
           <button data-mode="street"><span data-i="pin"></span>تحديد الشارع</button>
+          <button data-mode="private"><span data-i="home"></span>تحديد مكان خاص</button>
+          <button data-mode="person"><span data-i="user"></span>من هذا الشخص؟</button>
+          <button data-mode="plate"><span data-i="car"></span>لوحة السيارة</button>
           <button data-mode="verify"><span data-i="shield"></span>التحقق من الصورة</button>
           <button data-mode="car"><span data-i="car"></span>هوية السيارة</button>
           <label class="ropt" title="يرسل الصورة لـ Yandex و Baidu (لتحديد المنطقة والشارع بس)"><input type="checkbox" id="rerunRev"> بحث عكسي أونلاين</label>
@@ -188,11 +193,17 @@
     <div class="modes">
       <button class="mode active" data-mode="region"><span data-i="globe"></span><b>تحديد المنطقة</b><small>دولة · مدينة · نطاق</small></button>
       <button class="mode" data-mode="street"><span data-i="pin"></span><b>تحديد الشارع</b><small>تحليل عميق · Street View</small></button>
+      <button class="mode" data-mode="private"><span data-i="home"></span><b>تحديد مكان خاص</b><small>بيت · مدرسة · شغل</small></button>
+      <button class="mode" data-mode="person"><span data-i="user"></span><b>من هذا الشخص؟</b><small>صورة · إيميل · جوال · اسم</small></button>
+      <button class="mode" data-mode="plate"><span data-i="car"></span><b>لوحة السيارة</b><small>قراءة اللوحة · المركبة</small></button>
       <button class="mode" data-mode="verify"><span data-i="shield"></span><b>التحقق من الصورة</b><small>تعديل · توليد بالذكاء</small></button>
       <button class="mode" data-mode="car"><span data-i="car"></span><b>هوية السيارة</b><small>الماركة · الموديل · السنة</small></button>
     </div>
     <label class="opt" id="revRow"><input type="checkbox" id="revOpt" checked>
       <span><b>بحث عكسي أونلاين</b><small>يرسل الصورة لـ Yandex و Baidu عشان يلقى نسخ منها. شيل العلامة لو الصورة حساسة.</small></span></label>
+    <label class="opt hidden" id="queryRow"><span data-i="user" class="ico"></span>
+      <input id="queryInput" class="field" dir="auto" placeholder="إيميل · جوال · اسم (اختياري)">
+      <small class="dim">تكفي صورة، أو نص، أو الاثنين معاً.</small></label>
     <div class="modehint hidden" id="modeHint">بدون مفتاح API يشتغل بالنماذج المحلية بس (دولة/منطقة تقريبية). <button class="link" data-open-settings>أضف المفتاح</button></div>
     <div class="runmsg hidden" id="runMsg" role="alert"></div>
     <button id="run" class="run" disabled><span id="runLabel">اختر صورة</span></button>
