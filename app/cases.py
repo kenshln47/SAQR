@@ -29,6 +29,8 @@ _lock = threading.Lock()
 _cache_lock = threading.Lock()
 _meta_cache: dict[str, dict] = {}
 _disk_reads: dict[str, int] = {}
+_event_cache: dict[str, list] = {}
+_event_reads: dict[str, int] = {}
 RUNNING = ("queued", "recon", "analysing")
 EXT = {"JPEG": ".jpg", "MPO": ".jpg", "PNG": ".png", "WEBP": ".webp", "GIF": ".gif", "BMP": ".bmp",
        "TIFF": ".tif", "HEIF": ".heic", "AVIF": ".avif"}
@@ -130,24 +132,43 @@ class Case:
             return d
 
     def emit(self, kind: str, **data) -> None:
-        """Append one event; the UI streams events.jsonl over SSE."""
+        """Append one event. The in-memory index is what the stream tails; the file is the durable copy."""
         ev = {"t": time.time(), "kind": kind, **data}
+        line = json.dumps(ev, ensure_ascii=False) + "\n"
         with _lock:
+            self._hydrate_events()
             with self.events_path.open("a", encoding="utf-8") as f:
-                f.write(json.dumps(ev, ensure_ascii=False) + "\n")
+                f.write(line)
+            _event_cache[str(self.events_path)].append(ev)
+
+    def event_reads(self) -> int:
+        """How many times events.jsonl was read from disk in this process."""
+        return _event_reads.get(str(self.events_path), 0)
+
+    def _hydrate_events(self) -> list:
+        """Caller holds `_lock`. The first touch reads the file; later touches return the same list."""
+        key = str(self.events_path)
+        buf = _event_cache.get(key)
+        if buf is not None:
+            return buf
+        buf = []
+        path = self.events_path
+        if path.is_file():
+            _event_reads[key] = _event_reads.get(key, 0) + 1
+            for line in path.read_text(encoding="utf-8").splitlines():
+                if not line:
+                    continue
+                try:
+                    buf.append(json.loads(line))
+                except json.JSONDecodeError:
+                    buf.append({"t": 0, "kind": "log", "text": "(سطر تالف في السجل)"})
+        _event_cache[key] = buf
+        return buf
 
     def events(self, start: int = 0) -> list[dict]:
-        if not self.events_path.exists():
-            return []
         with _lock:
-            lines = self.events_path.read_text(encoding="utf-8").splitlines()
-        out = []
-        for x in lines[start:]:
-            try:
-                out.append(json.loads(x))
-            except json.JSONDecodeError:
-                out.append({"t": 0, "kind": "log", "text": "(سطر تالف في السجل)"})
-        return out
+            buf = self._hydrate_events()
+            return copy.deepcopy(buf[max(0, start):])
 
     def add_candidate(self, cand: dict) -> list[dict]:
         with _lock:
