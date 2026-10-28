@@ -20,7 +20,7 @@ No code changes. Findings opened: every ID in `AUDIT.md`. Findings closed: none.
 Opened on this branch, not closed: `H-GEOCLIP-01`. `--skip calib,prior` also drops GeoCLIP (MIT). Phase 2 measures it. A full skip is not an acceptable end state if that cost is material.
 
 Left open on purpose: `B-PRIV-01`, `H-PROMPT-01`. The README now describes those modes as they are. The code was not extended.
-Left open because it is a different vendor: `H-ESRI-01`.
+Left for a later phase at the time: `H-ESRI-01`. Closed in phase 5 (`7e23e6a`).
 
 ## Phase 2 — accuracy
 
@@ -66,10 +66,19 @@ Status: DONE on `harden/commercial`.
 
 ## Phase 5 — product
 
-`H-NET-01`, `H-ESRI-01`, `M-REV-01`, `L-REPORT-FONT`, `L-CSP-01`.
-Privacy policy, ToS, retention. Reverse search default off; the Yandex/Baidu sentence stays. Vendor fonts. Replace the Esri raster. Candidate states: confirmed / possible / dismissed.
+Status: DONE on `harden/commercial`.
 
-Not in this phase: accounts for a multi-user server, until the single-user licence gates above are actually true.
+| ID | Status |
+|---|---|
+| M-REV-01 | DONE `584f03a` |
+| H-NET-01 | DONE `13a4c1c` |
+| H-ESRI-01 | DONE `7e23e6a` |
+| L-REPORT-FONT | DONE `cbaf91f` |
+| L-CSP-01 | DONE `dda66a8` |
+
+Reverse search defaults off. The Yandex/Baidu sentence stays. Fonts are local. The style JSON is local and the tiles are OpenFreeMap. The satellite toggle is NASA GIBS Blue Marble, native zoom 8. Esri and Wayback are refused. `possible` does not write truth (`266d2b7`). Privacy, terms, and retention are `46ada21`.
+
+Not in this phase: accounts for a multi-user server. Not closed: `H-GEOCLIP-01`, `H-RANK-01`, `B-PRIV-01`, `H-PROMPT-01`.
 
 ## Phase 6 — report
 

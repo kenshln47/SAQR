@@ -61,7 +61,7 @@ Fix: default panorama provider `mapillary` (Kartaview and Panoramax stay selecta
 
 Effort: M. Verify: unit tests for the default provider and for the refusal when no key is set.
 
-Closed in `7018f5f` for the Google/Apple/Bing/Yandex gate. Esri is still `H-ESRI-01`.
+Closed in `7018f5f` for the Google/Apple/Bing/Yandex gate. Esri was left as `H-ESRI-01` and closed later in `7e23e6a`.
 
 ### [H-GEOCLIP-01] HIGH — skipping `prior` drops GeoCLIP (MIT), not only StreetCLIP
 
@@ -168,11 +168,15 @@ Fix: ship an allowed raster (or a keyed Esri style) and name it in `THIRD_PARTY.
 
 Effort: M. Verify: the satellite toggle URL is one we have a written right to call.
 
+Closed in `7e23e6a`. The toggle is NASA GIBS Blue Marble Next Generation, matrix `GoogleMapsCompatible_Level8`. A zoom-8 tile returned JPEG on 2026-10-29; zoom 9 returned 400. NASA Earthdata says the imagery is shared openly and asks for an acknowledgment. s2maps.eu Sentinel-2 cloudless (2018–2024) is non-commercial and was not used. The agent `satellite` tool also refuses `esri` and `wayback`. Bing is still passed through to GeoInt when asked; that was already true and is not this finding.
+
 ### [H-NET-01] HIGH — "local" UI depends on Google Fonts and Carto
 
 `web/index.html:9-10` preconnects to `fonts.googleapis.com` and loads Inter and IBM Plex Sans Arabic from `fonts.googleapis.com`. The map style is `https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json` (`web/app.js:112`). Offline, the map errors and the type falls back. Every visit also contacts Google.
 
 Fix (phase 5 / packaging): vendor the two families and a style JSON. Effort: M.
+
+Closed in `13a4c1c`. Inter and IBM Plex Sans Arabic are SIL OFL files in `web/fonts/`. The style document is `web/vendor/ofm-dark.json`. Tiles, glyphs, and sprites still come from `tiles.openfreemap.org`. Their page says commercial use is allowed. The page does not call `fonts.googleapis.com` or `basemaps.cartocdn.com`.
 
 ### [H-RANK-01] HIGH — the default model is labelled "the best" against the table in the same file
 
@@ -233,6 +237,8 @@ Closed in `b7786c1`. The transcript is cut to `SAQR_CONTEXT_TOKENS` (default 240
 
 `rev: bool = Form(True)` (`app/server.py:193`). The checkbox is `checked` (`web/index.html:202`) and `store.get("rev", true)` (`web/app.js:1179`). The label does say the photo is sent to Yandex and Baidu. Trigger: Find Region with the default form. Effort: S. Phase 5 wants the disclosure kept; the default should be off for a commercial build.
 
+Closed in `584f03a`. The form, the checkbox, local storage, the agent, and the tool default to off. A stored `rev: true` stays on. The Yandex and Baidu sentence stays.
+
 ### [M-BING-01] MEDIUM — Apple, Bing, and Yandex panoramas are still one argument away
 
 Tool text lists `google, apple, bing, yandex, mapillary, kartaview, panoramax` (`app/agent.py:89`). Only Google is called out in the README. The other three closed platforms have the same class of terms problem. Effort: S. Gate them the same way as Google when the Google gate lands, or drop them from the tool description.
@@ -255,9 +261,13 @@ Closed in `8770f47`. `Case.photo` raises `FileNotFoundError`. Rerun returns 409.
 
 `app/report.py:155` sets `IBM Plex Sans Arabic` but the report document has no stylesheet link. The UI page loads the font from Google; the report does not. Effort: S.
 
+Closed in `cbaf91f`. The report links `/fonts.css` and `/report.css`. There is no inline style block.
+
 ### [L-CSP-01] LOW — CSP is only `frame-ancestors 'none'`
 
 `app/server.py:42`. Scripts are same-origin, so this is defence-in-depth, not a hole by itself. Effort: S.
+
+Closed in `dda66a8`. The policy is `default-src 'self'`, with a blob worker, wasm for the RTL plugin, and the three hosts the page still calls. `frame-ancestors` stays `none`. `style-src` keeps `'unsafe-inline'` because the HUD writes style attributes.
 
 ### [L-UTC-01] LOW — the clock is UTC
 
