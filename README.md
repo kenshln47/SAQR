@@ -86,5 +86,7 @@ shown where OpenStreetMap has them). It is Arabic right-to-left and also works o
   landscapes end at region level with a wide radius; SAQR says so instead of inventing a point.
 - Not built: identity lookup from email/phone/name, matching home interiors to addresses, rental-listing matching.
   The agent stops at city level for photos centred on private people or private homes.
+- Licence plates are a location clue only by their style and country/region code; the number is never read out,
+  searched or recorded, and the car module ignores the plate entirely.
 - Street View and Google tiles are fetched without an API key: fine for personal use, not for a public service.
 - Each AI analysis costs API credit; Find Street costs more than Find Region.
