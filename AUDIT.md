@@ -110,6 +110,8 @@ Fix (phase 3): in-memory ring plus an index, tail from `sent`.
 
 Effort: M. Verify: a test that appends N events and streams from index N-1 without asserting a full-file read in the hot path.
 
+Closed in `af60fae`.
+
 ### [H-LOAD-01] HIGH — `Case.load()` hits disk on every poll
 
 `load()` reads and parses `case.json` (`app/cases.py:81-87`). `cancelled()` and `running()` call it (`app/cases.py:140-144`). The agent calls `cancelled()` every turn (`app/agent.py:352-356`). `add_candidate` loads again (`app/cases.py:120-128`). Trigger: a 40-turn street run.
@@ -117,6 +119,8 @@ Effort: M. Verify: a test that appends N events and streams from index N-1 witho
 Fix (phase 3): cache the dict, invalidate on `_save`.
 
 Effort: S. Verify: a test that two `load()` calls after one `update` see the new field, and a counter shows one read.
+
+Closed in `0acb481`.
 
 ### [H-POOL-01] HIGH — one unbounded thread per case, subprocesses up to an hour
 
@@ -131,6 +135,8 @@ def _start(case: cases.Case, mode: str) -> None:
 Fix (phase 3): bounded executor and a per-case cost meter.
 
 Effort: M. Verify: the (N+1)th submission waits when the pool size is N.
+
+Closed in `3991a06`.
 
 ### [H-ID-01] HIGH — case id `.` and `..` pass the allowlist
 
@@ -147,6 +153,8 @@ def get(cid: str) -> Case | None:
 Fix (phase 3, small enough to do with the id check whenever tests land): reject ids that are `.` or `..` or that resolve outside `CASES_DIR`.
 
 Effort: S. Verify: `get("..")` is `None` even if a parent `case.json` exists.
+
+Closed in `93d0bb1`.
 
 ### [H-ESRI-01] HIGH — satellite basemap is keyless Esri World Imagery
 
@@ -187,6 +195,8 @@ Fix (phase 2): re-measure and rank from that run. Effort: L.
 
 Fix: per-case locks; do not hold the catalog lock during I/O. Effort: S. Phase 3.
 
+Closed in `d3e6562`.
+
 ### [M-IMPORT-01] MEDIUM — importing the package creates directories and rewrites cases
 
 `CASES_DIR.mkdir` runs at import (`app/config.py:38-39`). `cases.recover_stale()` runs at import of the server (`app/server.py:46`) and flips every `queued` / `recon` / `analysing` case to `error`. Trigger: `import app.server` in a test, or a second process started while a run is live.
@@ -209,6 +219,8 @@ No `tests/`, no `pyproject.toml`, no workflow. `pytest` and `ruff` are not insta
 
 `_prune_images(..., keep=6)` (`app/agent.py:183-194`). Recon is sliced `recon_md[:20000]` (`app/agent.py:349`) and person/plate recon `[:12000]` (`app/identify.py:302`, `app/identify.py:325`). Trigger: a sweep that returns several sheets, then later turns forget them. Effort: M. Phase 3.
 
+Closed in `b7786c1`. The transcript is cut to `SAQR_CONTEXT_TOKENS` (default 24000). Recon text is cut to `SAQR_RECON_TOKENS` (default 8000). An image counts as 1600 tokens. The line numbers above are the pre-fix citations.
+
 ### [M-REV-01] MEDIUM — reverse image search defaults on
 
 `rev: bool = Form(True)` (`app/server.py:193`). The checkbox is `checked` (`web/index.html:202`) and `store.get("rev", true)` (`web/app.js:1179`). The label does say the photo is sent to Yandex and Baidu. Trigger: Find Region with the default form. Effort: S. Phase 5 wants the disclosure kept; the default should be off for a commercial build.
@@ -220,6 +232,8 @@ Tool text lists `google, apple, bing, yandex, mapillary, kartaview, panoramax` (
 ### [M-CAT-01] MEDIUM — OpenRouter model list failure mode is an exception on the request thread
 
 `catalog()` calls `raise_for_status()` with no stale cache (`app/openrouter.py:40-43`). Settings and `/api/models` turn that into HTTP 502 (`app/server.py:142-143`, `app/server.py:157-160`). The agent calls `OR.reasoning` → `catalog()` inside a run (`app/openrouter.py:101-104`). Trigger: OpenRouter down mid-run. The run dies instead of skipping the reasoning parameter. Effort: S. Phase 3.
+
+Closed in `648b7bb`. A failed refresh keeps the previous list. With no list, `reasoning()` omits the parameter. Settings still reports the error when there is nothing cached.
 
 ## LOW
 

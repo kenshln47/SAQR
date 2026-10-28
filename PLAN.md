@@ -36,8 +36,19 @@ Status: PARTIAL. Not done. `H-GEOCLIP-01` and `H-RANK-01` stay open.
 
 ## Phase 3 — reliability
 
-`H-SSE-01`, `H-LOAD-01`, `H-POOL-01`, `H-ID-01`, `M-LOCK-01`, `M-CAT-01`, `M-PRUNE-01`.
-In-memory case cache, event index, bounded pool, per-case cost in the UI, token accounting instead of "6 images and 20k characters".
+Status: DONE on `harden/commercial`.
+
+| ID | Status |
+|---|---|
+| H-ID-01 | DONE `93d0bb1` |
+| H-LOAD-01 | DONE `0acb481` |
+| H-SSE-01 | DONE `af60fae` |
+| M-LOCK-01 | DONE `d3e6562` |
+| H-POOL-01 | DONE `3991a06` |
+| M-CAT-01 | DONE `648b7bb` |
+| M-PRUNE-01 | DONE `b7786c1` |
+
+The event tail is an in-memory index. `case.json` is cached after the first read. Case ids cannot be `.`, `..`, or a symlink that leaves `CASES_DIR`. Each case has its own lock. `catalog()` does not hold its lock across the request, and a failed refresh keeps the previous list. At most `SAQR_WORKERS` analyses run (default 2). Context is a token budget, not a fixed image count.
 
 ## Phase 4 — packaging
 
