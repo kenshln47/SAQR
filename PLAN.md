@@ -5,23 +5,20 @@ Order is fixed. A phase ends only when `AGENTS.md` §3 holds for the findings it
 
 ## Phase 0 — recon
 
-Status: DONE when this file and `AUDIT.md` are on `main`.
+Status: DONE in `0a384b9` (`docs: phase 0 audit and plan`).
 No code changes. Findings opened: every ID in `AUDIT.md`. Findings closed: none.
 
 ## Phase 1 — blockers that are licensing
 
-Do these, in order, one commit each. Do not touch person search, plate-owner lookup, or private-place targeting (`B-PRIV-01`, `H-PROMPT-01`).
-
-| Order | ID | Work |
+| Order | ID | Status |
 |---|---|---|
-| 1 | B-LIC-01 | `LICENSE` (proprietary, all rights reserved — commercial product, not a sample app), `NOTICE`, `THIRD_PARTY.md`, one-line ADR in `DECISIONS.md`. |
-| 2 | B-NC-01 | Commercial default skips the StreetCLIP/world prior. Opt-in only via `SAQR_ALLOW_NC_MODELS=1`. README states that. |
-| 3 | B-GGL-01 | Default panorama provider `mapillary`. Google Street View and Google tiles require `SAQR_GOOGLE_KEY` or `GOOGLE_MAPS_API_KEY`. |
-| 4 | M-BING-01 | Same key gate for `apple`, `bing`, `yandex`, or drop them from the tool description. Done in the Google commit if it stays a one-line extension. |
+| 1 | B-LIC-01 | DONE `d31a166` |
+| 2 | B-NC-01 | DONE `a111837` |
+| 3 | B-GGL-01 | DONE `7018f5f` |
+| 4 | M-BING-01 | DONE `7018f5f` (same commit: one key does not unlock the other closed providers) |
 
-Leave open: `B-PRIV-01` (will not implement), `H-ESRI-01` (separate tile vendor; do not silently rebadge Esri as fine).
-
-Done when: `pytest` green, `ruff check` clean, README matches the new defaults, `PLAN.md` lists the commit hashes.
+Left open on purpose: `B-PRIV-01`, `H-PROMPT-01`. Not modified.
+Left open because it is a different vendor: `H-ESRI-01`.
 
 ## Phase 2 — accuracy
 
@@ -35,9 +32,7 @@ In-memory case cache, event index, bounded pool, per-case cost in the UI, token 
 ## Phase 4 — packaging
 
 `M-TEST-01`, `M-PKG-01`, `M-GEOINT-01`, `M-IMPORT-01`, `L-PHOTO-01`.
-`pyproject.toml`, `uv.lock`, pytest, ruff, GitHub Actions, Dockerfile, `scripts/setup.sh` next to the `.bat` files. Vendor or fetch the geoint skill so a clone runs. Stop creating directories and failing cases at import time.
-
-The phase 1 tests may add the smallest pytest/ruff entry so §3 can pass before this phase finishes. That does not close phase 4.
+`pyproject.toml` already holds pytest and ruff settings from phase 1. Still missing: `uv.lock`, the dependency list, GitHub Actions, Dockerfile, `scripts/setup.sh` next to the `.bat` files. Vendor or fetch the geoint skill so a clone runs. Stop creating directories and failing cases at import time.
 
 ## Phase 5 — product
 
