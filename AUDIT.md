@@ -279,3 +279,7 @@ Closed in `dda66a8`. The policy is `default-src 'self'`, with a blob worker, was
 - Did not read `web/vendor/maplibre-gl.js` or `mapbox-gl-rtl-text.js` past the licence headers. MapLibre header says 3-Clause BSD, `v4.7.1`. rtl-text file is the BSD-2 notice plus ICU.
 - Did not execute GeoGuessBench, and did not open the geoint `recon.py` / `gsv.py` / `pano.py` sources (not on disk, not in this repo).
 - Did not change code. Phase 0 is the two markdown files only.
+
+## Phase 6 note (2026-10-29)
+
+`GAP.md` (`1451911`) and the README rewrite (`aac3f09`) do not close `B-PRIV-01`, `H-PROMPT-01`, `H-GEOCLIP-01`, or `H-RANK-01`. The README states the contradiction. The identity, plate, and private-place code was not changed in that pass. Line numbers in the findings above are from the phase 0 tree and were not re-audited here.

@@ -82,7 +82,16 @@ Not in this phase: accounts for a multi-user server. Not closed: `H-GEOCLIP-01`,
 
 ## Phase 6 — report
 
-`GAP.md` against Raven's public pages: find-region, find-street, find-property, short-term-rental, live-intelligence, identify-car, verify-image, FAQ. Each is HAVE / PARTIAL / MISSING with a day cost. README rewritten to what the code does, including the contradiction in `B-PRIV-01` if that code is still present.
+Status: DONE on `harden/commercial`.
+
+| Commit | What landed | What it does not close |
+|---|---|---|
+| `1451911` | `GAP.md`. Eight Raven pages: find-region, find-street, find-property, live-intelligence, identify-car, verify-image, and FAQ are PARTIAL. short-term-rental image matching is MISSING. The 60-day figure is an estimate if a licensed listing-photo feed already exists. It is not a measured plan | No Raven feature was built. Person, plate, and private-place code were not touched |
+| `aac3f09` | README rewritten to the code. The picker notes 10.9 km on the default and 8.7 km on the next row; the README does not call the default first. The map is not described as offline | `H-RANK-01` stays open. `OR_DEFAULT` was not changed |
+
+`B-PRIV-01` is still the code. Region and street stop at the city for a private person or a private home. Private-place replaces `SYSTEM` with `PRIVATE_NOTE` (`H-PROMPT-01`). Person and plate still run. The README says that. It does not remove it.
+
+Still open: `H-GEOCLIP-01`, `H-RANK-01`, `B-PRIV-01`, `H-PROMPT-01`.
 
 ## Explicitly not scheduled
 
