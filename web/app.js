@@ -275,7 +275,10 @@ function renderActiveMarkers() {
     state.activeMarkers.push(marker(el, c.lat, c.lon, `<div class="pop" dir="rtl"><b>${esc(c.label)}</b>
       <div class="c">${(+c.lat).toFixed(5)}, ${(+c.lon).toFixed(5)}</div>
       <div class="st ${model ? "low" : "medium"}"><i></i>${model ? "تخمين نماذج محلية" : "مرشح"} · ${Math.round((+c.confidence || 0) * 100)}% · ± ${esc(c.radius_km)} كم</div>
-      <div class="why">${esc(c.reason)}</div></div>`));
+      <div class="why">${esc(c.reason)}</div>
+      <div class="row"><button type="button" class="yes" data-review="confirmed" data-n="${Number(c.n)}">تأكيد</button>
+        <button type="button" class="no" data-review="dismissed" data-n="${Number(c.n)}">استبعاد</button></div>
+      ${c.review ? `<div class="why">${c.review.verdict === "confirmed" ? "مؤكّد" : "مستبعد"}</div>` : ""}</div>`));
   });
   renderRadii();
 }
@@ -756,6 +759,9 @@ function showFinal(f) {
         <button id="goto">${ICON.target}انتقل</button></span></div>
       <div class="meta"><span class="tag ${cls(f.confidence)}"><i></i>${esc(CONF_AR[f.confidence] || f.confidence)}</span>
         <span class="tag">${esc(LEVEL_AR[f.level] || f.level || "")}</span><span class="tag">± ${esc(f.radius_km)} كم</span></div>
+      <div class="review-row"><button type="button" class="yes" data-review="confirmed">تأكيد</button>
+        <button type="button" class="no" data-review="dismissed">استبعاد</button></div>
+      ${f.review ? `<p class="dim">${f.review.verdict === "confirmed" ? "مؤكّد كنقطة صحيحة" : "مستبعد"}</p>` : ""}
       <p dir="auto">${esc(f.summary)}</p>
       ${list("الأدلة الحاسمة", f.clues)}
       ${list("احتمالات ثانية", (f.alternatives || []).map((a) => `${a.place}: ${a.why}`))}
@@ -825,6 +831,18 @@ function handle(ev, live) {
       feed("candidate", `مرشح #${ev.candidate.n}`, `${ev.candidate.label} — ${ev.candidate.reason}`);
       if (live && !state.final) flyTo(ev.candidate.lat, ev.candidate.lon, ev.candidate.radius_km);
       break;
+    case "review": {
+      if (ev.n) {
+        const cand = state.cands.find((x) => x.n === ev.n);
+        if (cand) cand.review = { verdict: ev.verdict };
+        renderActiveMarkers();
+      } else if (state.final) {
+        state.final.review = { verdict: ev.verdict };
+        showFinal(state.final);
+      }
+      feed("log", "مراجعة", ev.verdict === "confirmed" ? "تأكيد المحلل" : "استبعاد المحلل");
+      break;
+    }
     case "evidence": addEvidence(ev.path, ev.caption); break;
     case "final": {
       showFinal(ev.final);
@@ -1257,3 +1275,33 @@ function init() {
   applyLayers();
 }
 init();
+
+document.addEventListener("click", async (ev) => {
+  const btn = ev.target.closest?.("[data-review]");
+  if (!btn || !state.active) return;
+  ev.preventDefault();
+  ev.stopPropagation();
+  const verdict = btn.dataset.review;
+  const body = { verdict };
+  if (btn.dataset.n) body.n = +btn.dataset.n;
+  btn.disabled = true;
+  try {
+    const r = await fetch(`/api/cases/${encodeURIComponent(state.active)}/review`, {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+    });
+    if (!r.ok) { toast("ما انحفظت المراجعة", "err"); return; }
+    if (body.n) {
+      const cand = state.cands.find((x) => x.n === body.n);
+      if (cand) cand.review = { verdict };
+      renderActiveMarkers();
+    } else if (state.final) {
+      state.final.review = { verdict };
+      showFinal(state.final);
+    }
+    toast(verdict === "confirmed" ? "انحفظت كنقطة صحيحة" : "تم الاستبعاد");
+  } catch {
+    toast("ما قدرت أوصل لصقر", "err");
+  } finally {
+    btn.disabled = false;
+  }
+});

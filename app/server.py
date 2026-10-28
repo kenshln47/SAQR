@@ -232,6 +232,30 @@ def cancel_case(cid: str, request: Request):
     return case.load()
 
 
+@app.post("/api/cases/{cid}/review")
+def review_case(cid: str, request: Request, body: dict = Body(default={})):
+    """Confirm writes ground truth. Dismiss marks the pin and leaves any truth in place."""
+    _local_origin(request)
+    case = _case(cid)
+    verdict = body.get("verdict")
+    raw_n = body.get("n")
+    n = None
+    if raw_n is not None:
+        try:
+            n = int(raw_n)
+        except (TypeError, ValueError):
+            raise HTTPException(400, "n")
+    try:
+        lat = None if body.get("lat") is None else float(body["lat"])
+        lon = None if body.get("lon") is None else float(body["lon"])
+        case.review(str(verdict or ""), n=n, lat=lat, lon=lon, country=body.get("country"))
+    except KeyError:
+        raise HTTPException(404, "ما فيه شيء للمراجعة")
+    except (TypeError, ValueError):
+        raise HTTPException(400, "مراجعة غير صالحة")
+    return case.load()
+
+
 @app.get("/api/cases")
 def list_cases():
     return cases.all_cases()

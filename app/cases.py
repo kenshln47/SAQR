@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import io
 import json
+import math
 import os
 import re
 import shutil
@@ -14,6 +15,7 @@ from pathlib import Path
 
 from PIL import Image, ImageOps
 
+from .benchscore import haversine_km
 from .config import CASES_DIR
 
 try:   # iPhone photos: lets PIL (and so every analysis path) open HEIC/HEIF
@@ -127,6 +129,51 @@ class Case:
             self._save(d)
         self.emit("candidate", candidate=cand)
         return cands
+
+    def review(self, verdict: str, n: int | None = None, lat: float | None = None,
+               lon: float | None = None, country: str | None = None) -> dict:
+        """Analyst confirm or dismiss. Confirm writes truth. Dismiss does not replace it."""
+        if verdict not in {"confirmed", "dismissed"}:
+            raise ValueError("verdict")
+        with _lock:
+            d = self.load()
+            if n is not None:
+                match = next((c for c in d.get("candidates") or [] if c.get("n") == n), None)
+                if match is None:
+                    raise KeyError("candidate")
+                match["review"] = {"verdict": verdict, "at": _now()}
+                if lat is None and lon is None:
+                    lat, lon = match.get("lat"), match.get("lon")
+            else:
+                final = d.get("final")
+                if not isinstance(final, dict) or not final:
+                    raise KeyError("final")
+                final["review"] = {"verdict": verdict, "at": _now()}
+                d["final"] = final
+                if lat is None and lon is None:
+                    lat, lon = final.get("lat"), final.get("lon")
+                if country is None:
+                    country = final.get("country")
+            if verdict == "confirmed":
+                if lat is None or lon is None:
+                    raise ValueError("coordinates")
+                lat_f, lon_f = float(lat), float(lon)
+                if not math.isfinite(lat_f) or not math.isfinite(lon_f):
+                    raise ValueError("coordinates")
+                if not -90 <= lat_f <= 90 or not -180 <= lon_f <= 180:
+                    raise ValueError("coordinates")
+                truth = {"lat": lat_f, "lon": lon_f, "source": "analyst", "verdict": verdict,
+                         "candidate_n": n, "at": _now()}
+                if country:
+                    truth["country"] = country
+                final = d.get("final") if isinstance(d.get("final"), dict) else None
+                if final and final.get("lat") is not None and final.get("lon") is not None:
+                    truth["error_km"] = round(haversine_km(float(final["lat"]), float(final["lon"]), lat_f, lon_f), 3)
+                d["truth"] = truth
+                _write_atomic(self.dir / "truth.json", json.dumps(truth, ensure_ascii=False, indent=1))
+            self._save(d)
+        self.emit("review", verdict=verdict, n=n)
+        return d
 
     def add_evidence(self, src: Path, caption: str) -> str:
         """Copy an image into evidence/ and announce it; returns its case-relative path."""
