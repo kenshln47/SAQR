@@ -37,8 +37,10 @@ with live prices from OpenRouter. Any other model that takes images and supports
 The benchmark measures the eye, not tool use; SAQR's prompts were tuned on Claude, so other models may call the
 tools less well. Web search on OpenRouter uses its `openrouter:web_search` server tool (billed by OpenRouter).
 
-Without a key SAQR runs on local models only: metadata, OCR, object detection, the GeoCLIP/StreetCLIP world prior
-and (if enabled) reverse image search. Free, but country/region level only.
+Without a key SAQR runs on local metadata, OCR and object detection. The StreetCLIP world prior
+(CC-BY-NC-4.0; GeoCLIP rides in the same `prior.py` step) stays off unless `SAQR_ALLOW_NC_MODELS=1`
+on a private, non-commercial install. It is not part of a paid deployment. Reverse image search
+runs only when that option is on. Country-level guesses need either the opt-in prior or an API key.
 
 ## Modules
 

@@ -5,7 +5,6 @@ import json
 import math
 import time
 import traceback
-from pathlib import Path
 
 import anthropic
 
@@ -312,8 +311,10 @@ def run_geolocate(case: Case, mode: str) -> None:
             bg = pj.get("best_guess") or {}
             top = (pj.get("combined") or [{}])[0]
             if "lat" not in bg or not top.get("name"):
-                return finish(case, "error", "", "الفحص المحلي ما رجع تخمين (النماذج المحلية ما اشتغلت). "
-                                                 "أضف مفتاح من الإعدادات للتحليل الكامل، أو شوف السجل.")
+                return finish(case, "error", "",
+                              "الفحص المحلي ما رجع تخمين موقع. توقع الدولة (StreetCLIP) غير تجاري ومطفأ "
+                              "إلا إذا ضبطت SAQR_ALLOW_NC_MODELS=1 على جهاز شخصي. "
+                              "أضف مفتاح من الإعدادات للتحليل الكامل، أو شوف السجل.")
             final = {"country": top["name"], "region": "", "city": bg.get("near", ""),
                      "lat": bg["lat"], "lon": bg["lon"], "radius_km": 300, "level": "country",
                      "confidence": "low",

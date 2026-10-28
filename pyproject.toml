@@ -1,0 +1,12 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+extend-exclude = ["web/vendor"]
+
+[tool.ruff.lint]
+# Bugs only. Formatting the existing tree is not this change.
+select = ["E9", "F"]

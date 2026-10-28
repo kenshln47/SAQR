@@ -24,6 +24,7 @@ from PIL import Image, ImageOps
 
 from .cases import Case   # importing cases registers the HEIC opener
 from .config import SCRIPTS, SECRET_ENV, UV, VENV_PY
+from .licensing import recon_skip_arg
 
 SAT_SOURCE = re.compile(r"(esri|google|google-hybrid|bing|wayback:\d{4}(-\d{2}){0,2})")
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) SAQR/1.0 (+local)"
@@ -78,7 +79,7 @@ def _ll(lat: float, lon: float) -> str:
 
 def recon(case: Case) -> ToolOut:
     """First local pass: metadata, OCR, reverse search, object crops, world prior."""
-    args = [str(case.photo), "--out-dir", "recon", "--skip", "calib"]
+    args = [str(case.photo), "--out-dir", "recon", "--skip", recon_skip_arg()]
     if not case.load().get("rev", True):
         args.append("--no-rev")
     rc, out = run_script(case, "recon.py", args, use_uv=True, timeout=1800)
