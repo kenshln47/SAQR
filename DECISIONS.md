@@ -9,3 +9,5 @@ ADR-003. The default panorama provider is Mapillary, not Google. Kartaview and P
 ADR-004. Commercial runs still pass `--skip prior` so StreetCLIP is not loaded, then call `prior.py --models geoclip` into `recon/prior`. The numeric gap versus StreetCLIP is unmeasured. H-GEOCLIP-01 stays open until that score exists.
 
 ADR-005. At most `SAQR_WORKERS` analyses run at once (default 2, hard cap 8). The upload returns immediately; the extra job waits for a slot before it starts a subprocess.
+
+ADR-006. Context is a token budget, not "6 images" or a 20000-character cut. The estimate is 2 characters per token and 1600 tokens per image. Defaults: `SAQR_CONTEXT_TOKENS=24000`, `SAQR_RECON_TOKENS=8000`. Provider usage is recorded when the response includes it.

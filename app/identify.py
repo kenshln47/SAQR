@@ -17,6 +17,7 @@ from . import tools as T
 from .agent import _friendly, _stream_with_retry, finish
 from .cases import Case
 from .config import EFFORT, MAX_TURNS, engine_label, has_ai, model_name, provider
+from .context import clip_text, context_token_budget, prune_messages, recon_token_budget, usage_delta
 
 WEB_SEARCH_OR = {"type": "openrouter:web_search", "parameters": {"max_results": 5, "max_uses": 8}}
 SERVER_WEB = {"type": "web_search_20260209", "name": "web_search", "max_uses": 8}
@@ -161,9 +162,13 @@ def _agent(case: Case, system: str, tools: list[dict], intro: str, image: Path |
             return
         case.emit("progress", turn=turn + 1, max=MAX_TURNS)
         case.add_cost(turns=1)
+        prune_messages(messages[2:] if use_or else messages[1:], context_token_budget())
         if use_or:
             resp = OR.chat(model=model, messages=messages, tools=api_tools, max_tokens=16000, max_tool_calls=10,
                            **OR.reasoning(model, EFFORT))
+            spent = usage_delta(resp.get("usage"))
+            if spent:
+                case.add_cost(**spent)
             choice = (resp.get("choices") or [{}])[0]
             msg, why = choice.get("message") or {}, choice.get("finish_reason")
             if isinstance(msg.get("reasoning"), str) and msg["reasoning"].strip():
@@ -219,6 +224,9 @@ def _agent(case: Case, system: str, tools: list[dict], intro: str, image: Path |
             msg = _stream_with_retry(client, model=model, max_tokens=16000, system=system, tools=api_tools,
                                      messages=messages, thinking={"type": "adaptive", "display": "summarized"},
                                      output_config={"effort": EFFORT})
+            spent = usage_delta(getattr(msg, "usage", None))
+            if spent:
+                case.add_cost(**spent)
             for b in msg.content:
                 if b.type == "thinking" and getattr(b, "thinking", ""):
                     case.emit("thinking", text=b.thinking)
@@ -287,7 +295,7 @@ def run_person(case: Case) -> None:
             rec = T.recon(case)
             for p, cap in rec.images:
                 case.add_evidence(p, cap)
-            recon_md = rec.text[:12000]
+            recon_md = clip_text(rec.text, recon_token_budget())
         if case.cancelled():
             return finish(case, "stopped", "انوقف بطلبك")
         if not has_ai():
@@ -325,7 +333,7 @@ def run_plate(case: Case) -> None:
         case.emit("stage", stage="analysis", text=f"{engine_label()} يقرأ اللوحة ويتحقق")
         w, h = T.photo_size(case)
         intro = (f"Read the licence plate in this photo ({w}x{h} px; view_photo boxes use these pixels) and report "
-                 f"what it supports. Crop the plate before reading it.\n\n<recon>\n{rec.text[:12000]}\n</recon>")
+                 f"what it supports. Crop the plate before reading it.\n\n<recon>\n{clip_text(rec.text, recon_token_budget())}\n</recon>")
         _agent(case, SYSTEM_PLATE, PLATE_TOOLS, intro, case.photo, "file_plate")
         _finish_run(case, "قراءة اللوحة")
     except Exception as e:

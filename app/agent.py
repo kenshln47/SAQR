@@ -12,6 +12,7 @@ from . import openrouter as OR
 from . import tools as T
 from .cases import Case
 from .config import EFFORT, MAX_TURNS, engine_label, has_ai, model_name, provider
+from .context import clip_text, context_token_budget, prune_messages, recon_token_budget, usage_delta
 from .report import write_report
 
 SYSTEM = """You are SAQR, a photo geolocation analyst running on the user's own computer.
@@ -169,29 +170,9 @@ def _friendly(e: Exception) -> str:
     return t[:400]
 
 
-def _image_holders(content):
-    """Every image part in a message body, including the ones nested inside Anthropic tool_result blocks."""
-    for part in content if isinstance(content, list) else []:
-        if not isinstance(part, dict):
-            continue
-        if part.get("type") in ("image", "image_url"):
-            yield part
-        elif part.get("type") == "tool_result" and isinstance(part.get("content"), list):
-            yield from (x for x in part["content"] if isinstance(x, dict) and x.get("type") in ("image", "image_url"))
-
-
-def _prune_images(messages: list, keep: int = 6) -> None:
-    """Keep the newest tool images; older ones become a note (they stay in the evidence tab),
-    so long runs do not resend every image every turn or overflow the context."""
-    seen = 0
-    for m in reversed(messages):
-        if not isinstance(m, dict) or m.get("role") != "user":
-            continue
-        for part in list(_image_holders(m.get("content"))):
-            seen += 1
-            if seen > keep:
-                part.clear()
-                part.update({"type": "text", "text": "[older image removed to save context; it is in the case evidence]"})
+def _prune_images(messages: list) -> None:
+    """Fit this slice of the transcript to the token budget. The opening photo is not in the slice."""
+    prune_messages(messages, context_token_budget())
 
 
 def _run_tool(case: Case, name: str, inp: dict) -> T.ToolOut:
@@ -360,7 +341,7 @@ def _intro(case: Case, mode: str, recon_md: str) -> str:
     w, h = T.photo_size(case)
     return (f"{MODE_HINT.get(mode, MODE_HINT['region'])}\n\nWhere was this photo taken?\n"
             f"The photo is {w}x{h} px (the copy you see may be downscaled; view_photo boxes use the full size).\n\n"
-            f"<recon>\n{recon_md[:20000]}\n</recon>")
+            f"<recon>\n{clip_text(recon_md, recon_token_budget())}\n</recon>")
 
 
 def _stop_requested(case: Case) -> bool:
@@ -405,6 +386,9 @@ def _agent_loop(case: Case, mode: str, recon_md: str) -> None:
             cache_control={"type": "ephemeral"},
             betas=["server-side-fallback-2026-07-01"], fallbacks="default",
         )
+        spent = usage_delta(getattr(msg, "usage", None))
+        if spent:
+            case.add_cost(**spent)
 
         for b in msg.content:
             if b.type == "thinking" and getattr(b, "thinking", ""):
@@ -476,6 +460,9 @@ def _agent_loop_openrouter(case: Case, mode: str, recon_md: str) -> None:
         _prune_images(messages[2:])
         resp = OR.chat(model=model, messages=messages, tools=tools, max_tokens=32000, max_tool_calls=12,
                        **OR.reasoning(model, EFFORT))
+        spent = usage_delta(resp.get("usage"))
+        if spent:
+            case.add_cost(**spent)
         choice = (resp.get("choices") or [{}])[0]
         msg, finish = choice.get("message") or {}, choice.get("finish_reason")
         if isinstance(msg.get("reasoning"), str) and msg["reasoning"].strip():
