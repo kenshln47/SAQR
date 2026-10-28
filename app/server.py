@@ -29,6 +29,23 @@ MODES = {"region", "street", "private", "verify", "car", "person", "plate"}
 MAX_UPLOAD = 40 * 1024 * 1024
 BOARD = CASES_DIR / "saqr_board.json"
 PIN_KINDS = {"place", "camera", "note"}
+# Hosts the page actually calls: OpenFreeMap tiles/glyphs/sprites, NASA GIBS raster, Nominatim search.
+# worker-src blob: is MapLibre's worker. wasm-unsafe-eval is the RTL plugin. style-src keeps
+# 'unsafe-inline' because the HUD writes style attributes. frame-ancestors stays none.
+CONTENT_SECURITY_POLICY = (
+    "default-src 'self'; "
+    "script-src 'self' 'wasm-unsafe-eval'; "
+    "style-src 'self' 'unsafe-inline'; "
+    "img-src 'self' data: blob: https://tiles.openfreemap.org https://gibs.earthdata.nasa.gov; "
+    "font-src 'self'; "
+    "connect-src 'self' https://tiles.openfreemap.org https://gibs.earthdata.nasa.gov https://nominatim.openstreetmap.org; "
+    "worker-src 'self' blob:; "
+    "child-src blob:; "
+    "frame-ancestors 'none'; "
+    "base-uri 'self'; "
+    "form-action 'self'; "
+    "object-src 'none'"
+)
 
 
 @app.middleware("http")
@@ -38,7 +55,7 @@ async def no_stale_ui(request: Request, call_next):
         resp.headers["Cache-Control"] = "no-cache"
     resp.headers["X-Content-Type-Options"] = "nosniff"
     resp.headers["X-Frame-Options"] = "DENY"
-    resp.headers["Content-Security-Policy"] = "frame-ancestors 'none'"
+    resp.headers["Content-Security-Policy"] = CONTENT_SECURITY_POLICY
     return resp
 
 
