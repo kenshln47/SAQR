@@ -16,4 +16,4 @@ RUN uv sync --frozen --no-dev --no-install-project
 COPY . .
 ENV SAQR_PORT=8765
 EXPOSE 8765
-CMD ["uv", "run", "--no-dev", "python", "-m", "app.server"]
+CMD ["sh", "-c", "uv run --no-dev python -m app.geoint_fetch && uv run --no-dev python -m app.server"]

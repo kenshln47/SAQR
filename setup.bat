@@ -8,12 +8,7 @@ uv pip install --python %VP% -r requirements.txt || goto :err
 uv pip install --python %VP% --no-deps streetlevel==0.12.13 || goto :err
 uv pip install --python %VP% torch torchvision --index-url https://download.pytorch.org/whl/cu130 || uv pip install --python %VP% torch torchvision
 if not exist .env copy .env.example .env >nul
-if "%SAQR_GEOINT%"=="" (set GI=%USERPROFILE%\.claude\skills\geoint) else (set GI=%SAQR_GEOINT%)
-if not exist "%GI%\scripts\recon.py" (
-  echo.
-  echo WARNING: the geoint skill was not found at %GI%
-  echo          Recon and the Street View / satellite / terrain tools need it. Install it there or set SAQR_GEOINT.
-)
+%VP% -m app.geoint_fetch || goto :err
 echo.
 echo Done. Run run.bat, then open Settings ^(gear icon^) to add an OpenRouter or Anthropic key.
 pause

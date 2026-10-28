@@ -7,7 +7,7 @@ is set), the map / Street View / satellite / search services the tools query, an
 ## Requirements
 
 - Windows, Linux, or macOS, with Python 3.12 via [uv](https://docs.astral.sh/uv/) (`winget install astral-sh.uv` on Windows)
-- The **geoint** skill at `~/.claude/skills/geoint` (`%USERPROFILE%\.claude\skills\geoint` on Windows), or `SAQR_GEOINT`. Recon, Street View, satellite, and terrain tools come from it. The status bar says when it is missing.
+- The **geoint** skill (MIT) is cloned by setup into `~/.claude/skills/geoint` (`%USERPROFILE%\.claude\skills\geoint` on Windows), or into `SAQR_GEOINT` if that is set, when `scripts/recon.py` is not already there. It is not copied into this repository. The status bar says when it is missing.
 - An NVIDIA GPU is optional (MegaLoc / GeoCLIP run on the CPU too, slower). The first run downloads the models.
 
 ## Run

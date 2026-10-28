@@ -17,4 +17,5 @@ if [ ! -f .env ]; then
   cp .env.example .env
 fi
 
+.venv/bin/python -m app.geoint_fetch
 echo "Done. Run scripts/run.sh, then open Settings to add an OpenRouter or Anthropic key."
