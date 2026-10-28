@@ -71,11 +71,16 @@ def pano_block_reason(provider: str | None) -> str | None:
 
 def satellite_block_reason(source: str | None) -> str | None:
     name = (source or "").strip().lower()
+    if name == "esri" or name.startswith("wayback:"):
+        return (
+            f"{name} tiles are not called. Esri World Imagery and Wayback are not licensed for this build. "
+            "Use google or google-hybrid with SAQR_GOOGLE_KEY or GOOGLE_MAPS_API_KEY, or bing."
+        )
     if name not in {"google", "google-hybrid"}:
         return None
     if _key_set(CLOSED_PANO["google"]):
         return None
     return (
         f"{name} tiles need SAQR_GOOGLE_KEY or GOOGLE_MAPS_API_KEY. "
-        "esri, bing, and wayback remain available; esri's own terms are a separate question."
+        "bing stays available. esri and wayback are not called."
     )

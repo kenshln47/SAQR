@@ -128,8 +128,9 @@ map.on("load", () => {
   $("#mapErr").classList.add("hidden");
   const layers = map.getStyle().layers;
   const firstSym = layers.find((l) => l.type === "symbol")?.id;
-  map.addSource("sat", { type: "raster", tileSize: 256, maxzoom: 19, attribution: "Esri, Maxar, Earthstar Geographics",
-    tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"] });
+  map.addSource("sat", { type: "raster", tileSize: 256, maxzoom: 8,
+    attribution: "NASA GIBS / ESDIS · Blue Marble Next Generation",
+    tiles: ["https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/BlueMarble_NextGeneration/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpeg"] });
   map.addLayer({ id: "sat", type: "raster", source: "sat", layout: { visibility: "none" }, paint: { "raster-brightness-max": 0.85 } }, firstSym);
   const b = layers.find((l) => l["source-layer"] === "buildings" || l["source-layer"] === "building");
   state.flatBuildings = layers.filter((l) => l["source-layer"] === b?.["source-layer"] && l.type === "fill").map((l) => l.id);

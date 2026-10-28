@@ -111,7 +111,9 @@ It is Arabic right-to-left and also works on a phone. Inter and IBM Plex Sans Ar
 - Street-level search defaults to Mapillary. Kartaview and Panoramax are the other open providers.
   Google Street View, Google satellite tiles, and Apple, Bing, and Yandex panoramas stay off until their own
   key is set: `SAQR_GOOGLE_KEY` or `GOOGLE_MAPS_API_KEY`, `SAQR_APPLE_KEY`, `SAQR_BING_KEY`, `SAQR_YANDEX_KEY`.
-  A Google key does not unlock the others. Esri imagery in the satellite toggle is a separate, still-open question.
+  A Google key does not unlock the others. The map's قمر صناعي toggle is NASA GIBS Blue Marble Next Generation
+  (Web Mercator, native zoom 8, not a building-level picture). The agent's `satellite` tool does not call Esri or
+  Wayback. Google satellite tiles still need a Google key. Bing is still passed through to GeoInt when the model asks for it.
 - Each AI analysis costs API credit; Find Street costs more than Find Region.
 
 ## Licence

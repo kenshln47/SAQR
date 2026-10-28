@@ -18,3 +18,6 @@ ADR-008. Setup clones https://github.com/marouane53/GeoInt.git when `scripts/rec
 
 ADR-009. The map style is the OpenFreeMap build of dark-matter, stored in the repo, not fetched from `basemaps.cartocdn.com`. Tiles stay on `tiles.openfreemap.org`. Their own page says commercial use is allowed. Fonts are the SIL OFL files in `web/fonts/`, not `fonts.googleapis.com`.
 
+ADR-010. The satellite toggle is NASA GIBS Blue Marble Next Generation, matrix `GoogleMapsCompatible_Level8`. Sentinel-2 cloudless on s2maps.eu is non-commercial for 2018–2024 and was not used. Esri World Imagery and Wayback are refused in the agent tool as well as removed from the map. Google satellite still needs its own key. Bing is unchanged.
+
+

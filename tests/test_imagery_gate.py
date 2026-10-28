@@ -24,7 +24,11 @@ def test_google_tools_do_not_spawn_without_a_key(monkeypatch: pytest.MonkeyPatch
     views = T.streetview_views(None, 24.7, 46.7)
     sweep = T.streetview_sweep(None, 24.7, 46.7, provider="google")
     sat = T.satellite(None, 24.7, 46.7, source="google")
+    esri = T.satellite(None, 24.7, 46.7, source="esri")
+    wayback = T.satellite(None, 24.7, 46.7, source="wayback:2020")
     assert near.is_error and views.is_error and sweep.is_error and sat.is_error
+    assert esri.is_error and wayback.is_error
+    assert "not called" in esri.text
     assert calls == []
 
 

@@ -90,7 +90,7 @@ TOOLS = [
                                                  "Also open: kartaview, panoramax. google, apple, bing and yandex are refused unless their own key is set."),
      "input_schema": {"type": "object", "properties": {"lat": NUM, "lon": NUM, "radius_m": {"type": "integer"},
                       "provider": {"type": "string"}}, "required": ["lat", "lon"], "additionalProperties": False}},
-    {"name": "satellite", "description": "Satellite tile mosaic centred on a point. Sources: esri, bing, wayback:YYYY. google and google-hybrid need SAQR_GOOGLE_KEY or GOOGLE_MAPS_API_KEY.",
+    {"name": "satellite", "description": "Satellite tile mosaic centred on a point. google and google-hybrid need SAQR_GOOGLE_KEY or GOOGLE_MAPS_API_KEY. bing is the other source the tool will call. esri and wayback are refused. The map's own satellite toggle is a separate low-resolution NASA layer, not this tool.",
      "input_schema": {"type": "object", "properties": {"lat": NUM, "lon": NUM, "zoom": {"type": "integer"}, "source": {"type": "string"}},
                       "required": ["lat", "lon"], "additionalProperties": False}},
     {"name": "terrain_view", "description": "Render the elevation-model skyline seen from a camera point and heading, stacked over the photo for comparison.",
@@ -186,7 +186,7 @@ def _run_tool(case: Case, name: str, inp: dict) -> T.ToolOut:
     if name == "streetview_sweep":
         return T.streetview_sweep(case, inp["lat"], inp["lon"], inp.get("radius_m", 3000), inp.get("provider") or "mapillary")
     if name == "satellite":
-        return T.satellite(case, inp["lat"], inp["lon"], inp.get("zoom", 16), inp.get("source", "esri"))
+        return T.satellite(case, inp["lat"], inp["lon"], inp.get("zoom", 16), inp.get("source", "google"))
     if name == "terrain_view":
         return T.terrain_view(case, inp["lat"], inp["lon"], inp["heading"], inp.get("hfov", 70), inp.get("height_m", 2),
                               inp.get("range_m", 30000))
