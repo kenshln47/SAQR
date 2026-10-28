@@ -109,7 +109,7 @@ function toast(msg, kind = "") {
 // joins and orders Arabic letters in map labels; without it they draw unjoined and left-to-right
 maplibregl.setRTLTextPlugin(new URL("vendor/mapbox-gl-rtl-text.js", location.href).href, false)?.catch?.(() => {});
 const map = new maplibregl.Map({
-  container: "map", style: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
+  container: "map", style: "vendor/ofm-dark.json",
   center: [30, 24], zoom: 1.7, maxPitch: 75, attributionControl: { compact: true }, dragRotate: true,
 });
 let ready = false;
@@ -120,7 +120,7 @@ const arabicFirst = (tf) => (tf[0] === "step" && Array.isArray(tf[1]) && tf[1][0
   : ["coalesce", ["get", "name:ar"], tf]);
 map.on("error", () => {
   if (ready) return;   // a missing tile later is normal; only a style that never loads needs a word
-  $("#mapErr").textContent = "الخريطة ما تحملت: تحتاج إنترنت (CARTO و Esri). باقي صقر يشتغل عادي.";
+  $("#mapErr").textContent = "الخريطة ما تحملت: تحتاج إنترنت (OpenFreeMap). باقي صقر يشتغل عادي.";
   $("#mapErr").classList.remove("hidden");
 });
 map.on("load", () => {

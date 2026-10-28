@@ -96,7 +96,10 @@ reconnect. The server only answers on 127.0.0.1 and rejects requests from other 
 
 The interface is a dark frosted-glass layout over MapLibre GL (vendored in `web/vendor/`, BSD-3, with the
 mapbox-gl-rtl-text plugin, BSD-2, so Arabic map labels are joined and ordered right to left; Arabic place names are
-shown where OpenStreetMap has them). It is Arabic right-to-left and also works on a phone.
+shown where OpenStreetMap has them). The style document is local (`web/vendor/ofm-dark.json`). The tiles, glyphs, and
+sprites are requested from `tiles.openfreemap.org` when the map is on screen. That public instance allows commercial
+use and asks for the OpenFreeMap / OpenMapTiles / OpenStreetMap attribution, which MapLibre draws from their TileJSON.
+It is Arabic right-to-left and also works on a phone. Inter and IBM Plex Sans Arabic are vendored (`web/fonts/`, SIL OFL).
 
 ## Limits (by design)
 

@@ -13,8 +13,9 @@ SAQR's own code is proprietary (see LICENSE). Everything below is someone else's
 | OWLv2 | GeoInt `detect.py` | Apache-2.0 | Allowed. |
 | GeoCalib | GeoInt `calib.py` | Apache-2.0 | Allowed. SAQR already passes `--skip calib`. |
 | MegaLoc `gberton/MegaLoc` | GeoInt `sweep.py` | MIT | Allowed. Still only as good as the panorama source it ranks. |
-| CARTO Dark Matter GL style | loaded at runtime from `basemaps.cartocdn.com` (`web/app.js`) | not vendored, not yet cleared | Open finding H-NET-01. |
+| OpenFreeMap Dark style | `web/vendor/ofm-dark.json` (built style fetched from `https://tiles.openfreemap.org/styles/dark` on 2026-10-29). Upstream is OpenMapTiles dark-matter, BSD-3-Clause code and CC-BY-4.0 design (`web/vendor/ofm-dark.LICENSE.txt`). | Tiles, glyphs, and sprites stay on `tiles.openfreemap.org`. Not vendored. | OpenFreeMap's public page says commercial use is allowed (FAQ, fetched the same day). No key. Attribution comes from their TileJSON: OpenFreeMap, © OpenMapTiles, OpenStreetMap. Their ToS (14 October 2026) is as-is, no SLA. |
+| Natural Earth shaded relief | raster source inside that style, `tiles.openfreemap.org/natural_earth/` | public domain | Named on the source. |
+| Inter, IBM Plex Sans Arabic | `web/fonts/*.woff2`, declared in `web/fonts.css` | SIL Open Font License 1.1 (`web/fonts/inter.OFL.txt`, `web/fonts/ibm-plex.OFL.txt`) | Allowed. No call to `fonts.googleapis.com`. |
 | Esri World Imagery tiles | loaded at runtime from `server.arcgisonline.com` (`web/app.js`) | no key, not cleared | Open finding H-ESRI-01. Not a substitute for a Google key. |
-| Inter, IBM Plex Sans Arabic | `fonts.googleapis.com` from `web/index.html` | SIL Open Font License for both families; the Google CSS host is a network call | Fonts may be vendored later. The hotlink is H-NET-01. |
 
 Google Street View, Google satellite tiles, and Apple, Bing, and Yandex panoramas are not bundled. SAQR refuses those calls unless the matching key is set (`SAQR_GOOGLE_KEY` or `GOOGLE_MAPS_API_KEY`, `SAQR_APPLE_KEY`, `SAQR_BING_KEY`, `SAQR_YANDEX_KEY`). The default panorama provider is Mapillary. Keys already in the environment are forwarded to the GeoInt subprocess; the Anthropic and OpenRouter keys are not.
