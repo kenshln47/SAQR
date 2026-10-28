@@ -17,4 +17,4 @@ SAQR's own code is proprietary (see LICENSE). Everything below is someone else's
 | Esri World Imagery tiles | loaded at runtime from `server.arcgisonline.com` (`web/app.js`) | no key, not cleared | Open finding H-ESRI-01. Not a substitute for a Google key. |
 | Inter, IBM Plex Sans Arabic | `fonts.googleapis.com` from `web/index.html` | SIL Open Font License for both families; the Google CSS host is a network call | Fonts may be vendored later. The hotlink is H-NET-01. |
 
-Google Street View, Google satellite tiles, and Apple, Bing, and Yandex panoramas are not bundled. Calling them without a contract is a terms problem, not a missing copyright line. The code gate for that is a separate change.
+Google Street View, Google satellite tiles, and Apple, Bing, and Yandex panoramas are not bundled. SAQR refuses those calls unless the matching key is set (`SAQR_GOOGLE_KEY` or `GOOGLE_MAPS_API_KEY`, `SAQR_APPLE_KEY`, `SAQR_BING_KEY`, `SAQR_YANDEX_KEY`). The default panorama provider is Mapillary. Keys already in the environment are forwarded to the GeoInt subprocess; the Anthropic and OpenRouter keys are not.

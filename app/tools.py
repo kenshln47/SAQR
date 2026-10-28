@@ -24,7 +24,7 @@ from PIL import Image, ImageOps
 
 from .cases import Case   # importing cases registers the HEIC opener
 from .config import SCRIPTS, SECRET_ENV, UV, VENV_PY
-from .licensing import recon_skip_arg
+from .licensing import normalise_pano, pano_block_reason, recon_skip_arg, satellite_block_reason
 
 SAT_SOURCE = re.compile(r"(esri|google|google-hybrid|bing|wayback:\d{4}(-\d{2}){0,2})")
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) SAQR/1.0 (+local)"
@@ -125,12 +125,18 @@ def photo_size(case: Case) -> tuple[int, int]:
 
 
 def streetview_near(case: Case, lat: float, lon: float, radius_m: int = 200) -> ToolOut:
+    blocked = pano_block_reason("google")
+    if blocked:
+        return ToolOut(blocked + " streetview_near is Google Street View.", is_error=True)
     rc, out = run_script(case, "gsv.py", ["near", _ll(lat, lon), "--radius", str(int(radius_m))], timeout=180)
     return ToolOut(_tail(out, 3000), is_error=rc != 0)
 
 
 def streetview_views(case: Case, lat: float, lon: float, headings: list[float] | None = None,
                      pitch: float = 0, fov: float = 90, radius_m: int = 300) -> ToolOut:
+    blocked = pano_block_reason("google")
+    if blocked:
+        return ToolOut(blocked + " streetview_views is Google Street View.", is_error=True)
     hs = ",".join(str(int(h)) for h in (headings or [0, 60, 120, 180, 240, 300]))
     name = f"sv_{lat:.4f}_{lon:.4f}_{int(time.time())}.jpg"
     rc, out = run_script(case, "gsv.py", ["sheet", "--at", _ll(lat, lon), "--headings", hs, "--pitch", str(pitch),
@@ -141,8 +147,12 @@ def streetview_views(case: Case, lat: float, lon: float, headings: list[float] |
     return ToolOut(_tail(out, 1500), [(img, f"Street View near {lat:.5f}, {lon:.5f} (headings {hs})")])
 
 
-def streetview_sweep(case: Case, lat: float, lon: float, radius_m: int = 3000, provider: str = "google") -> ToolOut:
+def streetview_sweep(case: Case, lat: float, lon: float, radius_m: int = 3000, provider: str = "mapillary") -> ToolOut:
     """List every panorama in a small area, index them, rank by visual similarity to the photo (MegaLoc)."""
+    provider = normalise_pano(provider)
+    blocked = pano_block_reason(provider)
+    if blocked:
+        return ToolOut(blocked, is_error=True)
     radius_m = int(min(max(radius_m, 200), 4400))
     tag = f"sw_{provider}_{lat:.3f}_{lon:.3f}_{radius_m}".replace("-", "m").replace(".", "p")
     rc, out = run_script(case, "pano.py", ["list", "--provider", provider, "--near", _ll(lat, lon),
@@ -166,6 +176,9 @@ def streetview_sweep(case: Case, lat: float, lon: float, radius_m: int = 3000, p
 def satellite(case: Case, lat: float, lon: float, zoom: int = 16, source: str = "esri", size: int = 900) -> ToolOut:
     if not SAT_SOURCE.fullmatch(source or ""):
         return ToolOut("unknown source: use esri, google, google-hybrid, bing or wayback:YYYY", is_error=True)
+    blocked = satellite_block_reason(source)
+    if blocked:
+        return ToolOut(blocked, is_error=True)
     zoom = int(min(max(zoom, 3), 20))
     pts = case.dir / "work" / f"pt_{int(time.time() * 1000)}.json"
     pts.parent.mkdir(exist_ok=True)

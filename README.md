@@ -91,7 +91,10 @@ shown where OpenStreetMap has them). It is Arabic right-to-left and also works o
   The agent stops at city level for photos centred on private people or private homes.
 - Licence plates are a location clue only by their style and country/region code; the number is never read out,
   searched or recorded, and the car module ignores the plate entirely.
-- Street View and Google tiles are fetched without an API key: fine for personal use, not for a public service.
+- Street-level search defaults to Mapillary. Kartaview and Panoramax are the other open providers.
+  Google Street View, Google satellite tiles, and Apple, Bing, and Yandex panoramas stay off until their own
+  key is set: `SAQR_GOOGLE_KEY` or `GOOGLE_MAPS_API_KEY`, `SAQR_APPLE_KEY`, `SAQR_BING_KEY`, `SAQR_YANDEX_KEY`.
+  A Google key does not unlock the others. Esri imagery in the satellite toggle is a separate, still-open question.
 - Each AI analysis costs API credit; Find Street costs more than Find Region.
 
 ## Licence

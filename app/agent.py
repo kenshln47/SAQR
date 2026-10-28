@@ -78,17 +78,18 @@ TOOLS = [
     {"name": "view_photo", "description": "Look at the original photo again, optionally a pixel crop to read small text or objects.",
      "input_schema": {"type": "object", "properties": {"box": {"type": "array", "items": {"type": "integer"},
                       "description": "x0,y0,x1,y1 in original pixels; omit for the full photo"}}, "additionalProperties": False}},
-    {"name": "streetview_near", "description": "Nearest official Google Street View panorama: id, coordinates, capture date, history, road name.",
+    {"name": "streetview_near", "description": "Nearest Google Street View panorama (id, coordinates, date, road). Refused unless SAQR_GOOGLE_KEY or GOOGLE_MAPS_API_KEY is set; otherwise use streetview_sweep.",
      "input_schema": {"type": "object", "properties": {"lat": NUM, "lon": NUM, "radius_m": {"type": "integer"}},
                       "required": ["lat", "lon"], "additionalProperties": False}},
-    {"name": "streetview_views", "description": "Render Street View views from the panorama nearest a point, one per compass heading, as one sheet.",
+    {"name": "streetview_views", "description": "Render Google Street View around a point, one heading per frame, as one sheet. Same key requirement as streetview_near.",
      "input_schema": {"type": "object", "properties": {"lat": NUM, "lon": NUM, "headings": {"type": "array", "items": NUM},
                       "pitch": NUM, "fov": NUM, "radius_m": {"type": "integer"}}, "required": ["lat", "lon"], "additionalProperties": False}},
     {"name": "streetview_sweep", "description": ("Index every panorama within radius_m (≤4400) of a point and rank them by visual similarity "
-                                                 "to the photo (MegaLoc). Slow (minutes). Providers: google, apple, bing, yandex, mapillary, kartaview, panoramax."),
+                                                 "to the photo (MegaLoc). Slow (minutes). Default provider is mapillary. "
+                                                 "Also open: kartaview, panoramax. google, apple, bing and yandex are refused unless their own key is set."),
      "input_schema": {"type": "object", "properties": {"lat": NUM, "lon": NUM, "radius_m": {"type": "integer"},
                       "provider": {"type": "string"}}, "required": ["lat", "lon"], "additionalProperties": False}},
-    {"name": "satellite", "description": "Satellite tile mosaic centred on a point. Sources: esri, google, google-hybrid, bing, wayback:YYYY.",
+    {"name": "satellite", "description": "Satellite tile mosaic centred on a point. Sources: esri, bing, wayback:YYYY. google and google-hybrid need SAQR_GOOGLE_KEY or GOOGLE_MAPS_API_KEY.",
      "input_schema": {"type": "object", "properties": {"lat": NUM, "lon": NUM, "zoom": {"type": "integer"}, "source": {"type": "string"}},
                       "required": ["lat", "lon"], "additionalProperties": False}},
     {"name": "terrain_view", "description": "Render the elevation-model skyline seen from a camera point and heading, stacked over the photo for comparison.",
@@ -202,7 +203,7 @@ def _run_tool(case: Case, name: str, inp: dict) -> T.ToolOut:
         return T.streetview_views(case, inp["lat"], inp["lon"], inp.get("headings"), inp.get("pitch", 0),
                                   inp.get("fov", 90), inp.get("radius_m", 300))
     if name == "streetview_sweep":
-        return T.streetview_sweep(case, inp["lat"], inp["lon"], inp.get("radius_m", 3000), inp.get("provider", "google"))
+        return T.streetview_sweep(case, inp["lat"], inp["lon"], inp.get("radius_m", 3000), inp.get("provider") or "mapillary")
     if name == "satellite":
         return T.satellite(case, inp["lat"], inp["lon"], inp.get("zoom", 16), inp.get("source", "esri"))
     if name == "terrain_view":
