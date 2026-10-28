@@ -241,6 +241,18 @@ class Case:
         self.emit("review", verdict=verdict, n=n)
         return d
 
+    def add_cost(self, **delta: int) -> dict:
+        """Add to the per-case meter (turns, tools, tokens). Emits a cost event for the UI."""
+        with self._lock():
+            d = self.load()
+            cost = dict(d.get("cost") or {})
+            for key, value in delta.items():
+                cost[key] = int(cost.get(key) or 0) + int(value)
+            d["cost"] = cost
+            self._save(d)
+        self.emit("cost", cost=cost)
+        return cost
+
     def add_evidence(self, src: Path, caption: str) -> str:
         """Copy an image into evidence/ and announce it; returns its case-relative path."""
         dst = self.evidence / f"{int(time.time() * 1000)}_{src.name}"

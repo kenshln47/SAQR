@@ -83,7 +83,7 @@ Cases go to `saqr\cases\`, or to `SAQR_CASES` if set; an install that already ke
 `satellite`, `terrain_view`, `pin_candidate`, `final_answer`. Person and plate modes use a separate loop: `view_photo`,
 `web_lookup`, `gravatar_lookup` (person only), and a single file call. Every image a tool makes is shown to the model and
 filed as evidence. The browser follows the run over server-sent events and picks up where it left off after a
-reconnect. The server only answers on 127.0.0.1 and rejects requests from other sites.
+reconnect. The server only answers on 127.0.0.1 and rejects requests from other sites. At most `SAQR_WORKERS` analyses run at once (default 2). A further upload is accepted and waits for a free slot before it starts a subprocess. The case panel shows turns, tool calls, and token totals when the provider reports them.
 
 The interface is a dark frosted-glass layout over MapLibre GL (vendored in `web/vendor/`, BSD-3, with the
 mapbox-gl-rtl-text plugin, BSD-2, so Arabic map labels are joined and ordered right to left; Arabic place names are

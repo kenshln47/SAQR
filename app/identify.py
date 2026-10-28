@@ -160,6 +160,7 @@ def _agent(case: Case, system: str, tools: list[dict], intro: str, image: Path |
             case.emit("log", text="انوقف التحليل بطلبك")
             return
         case.emit("progress", turn=turn + 1, max=MAX_TURNS)
+        case.add_cost(turns=1)
         if use_or:
             resp = OR.chat(model=model, messages=messages, tools=api_tools, max_tokens=16000, max_tool_calls=10,
                            **OR.reasoning(model, EFFORT))
@@ -197,6 +198,7 @@ def _agent(case: Case, system: str, tools: list[dict], intro: str, image: Path |
                     messages.append({"role": "tool", "tool_call_id": c["id"], "content": f"INVALID_INPUT: {err}"})
                     continue
                 case.emit("tool", name=name, input=inp)
+                case.add_cost(tools=1)
                 try:
                     out = _run_tool(case, name, inp)
                 except Exception as e:
@@ -241,6 +243,7 @@ def _agent(case: Case, system: str, tools: list[dict], intro: str, image: Path |
                                     "content": f"INVALID_INPUT: {err}"})
                     continue
                 case.emit("tool", name=b.name, input=b.input)
+                case.add_cost(tools=1)
                 try:
                     out = _run_tool(case, b.name, b.input)
                 except Exception as e:

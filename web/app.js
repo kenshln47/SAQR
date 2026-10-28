@@ -803,6 +803,22 @@ function showFinal(f) {
   }
 }
 
+function costLine(cost) {
+  if (!cost) return "";
+  const bits = [];
+  if (cost.turns) bits.push(`${cost.turns} جولات`);
+  if (cost.tools) bits.push(`${cost.tools} أداة`);
+  const tokens = (+cost.prompt_tokens || 0) + (+cost.completion_tokens || 0);
+  if (tokens) bits.push(`${tokens} رمز`);
+  return bits.join(" · ");
+}
+function paintCost(cost) {
+  const el = $("#costTxt");
+  if (!el) return;
+  const line = costLine(cost);
+  el.textContent = line;
+  el.classList.toggle("hidden", !line);
+}
 function handle(ev, live) {
   switch (ev.kind) {
     case "stage":
@@ -851,6 +867,10 @@ function handle(ev, live) {
       if (live && ev.final.lat !== undefined) flyTo(ev.final.lat, ev.final.lon, ev.final.radius_km);
       break;
     }
+    case "cost":
+      paintCost(ev.cost);
+      $("#turns").classList.remove("hidden");
+      break;
     case "error":
       feed("error", "خطأ", ev.text);
       if (!state.final) $("#result").innerHTML = errCard(ev.text);
@@ -895,6 +915,8 @@ function resetIntel() {
   ["#iReport", "#iStop", "#iRerun", "#rerunMenu", "#turns"].forEach((s) => $(s).classList.add("hidden"));
   $("#iStop").disabled = false;
   $("#caseNotes").value = ""; $("#caseNotesState").textContent = "";
+  const costEl = $("#costTxt");
+  if (costEl) { costEl.textContent = ""; costEl.classList.add("hidden"); }
 }
 
 async function openCase(id) {
@@ -919,6 +941,7 @@ async function openCase(id) {
   $("#iMode").textContent = MODE_LABEL[c.mode] || c.mode;
   $("#iTime").textContent = (c.created || "").slice(0, 16).replace("T", " ");
   $("#iEngine").textContent = c.engine ? `المحرك: ${c.engine}${c.rerun_of ? " · إعادة تحليل" : ""}` : "";
+  paintCost(c.cost);
   $("#rerunRev").checked = c.rev !== false && ["region", "street", "private", "plate"].includes(c.mode);   // only a choice the user made carries over
   const { events = [], ...meta } = c;
   if (!state.cases.some((x) => x.id === id)) state.cases.unshift(meta);

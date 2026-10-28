@@ -397,6 +397,7 @@ def _agent_loop(case: Case, mode: str, recon_md: str) -> None:
         if _stop_requested(case):
             return
         case.emit("progress", turn=turn + 1, max=MAX_TURNS)
+        case.add_cost(turns=1)
         _prune_images(messages[1:])
         msg = _stream_with_retry(
             client, model=model, max_tokens=64000, system=system, tools=TOOLS + SERVER_TOOLS, messages=messages,
@@ -412,6 +413,7 @@ def _agent_loop(case: Case, mode: str, recon_md: str) -> None:
                 case.emit("say", text=b.text)
             elif b.type == "server_tool_use":
                 case.emit("tool", name=b.name, input=b.input)
+                case.add_cost(tools=1)
         messages.append({"role": "assistant", "content": msg.content})
 
         if msg.stop_reason == "refusal":
@@ -438,6 +440,7 @@ def _agent_loop(case: Case, mode: str, recon_md: str) -> None:
                                 "content": f"INVALID_INPUT: {err}. Re-issue the call with a complete JSON object."})
                 continue
             case.emit("tool", name=b.name, input=b.input)
+            case.add_cost(tools=1)
             try:
                 out = _run_tool(case, b.name, b.input)
             except Exception as e:
@@ -469,6 +472,7 @@ def _agent_loop_openrouter(case: Case, mode: str, recon_md: str) -> None:
         if _stop_requested(case):
             return
         case.emit("progress", turn=turn + 1, max=MAX_TURNS)
+        case.add_cost(turns=1)
         _prune_images(messages[2:])
         resp = OR.chat(model=model, messages=messages, tools=tools, max_tokens=32000, max_tool_calls=12,
                        **OR.reasoning(model, EFFORT))
@@ -481,6 +485,7 @@ def _agent_loop_openrouter(case: Case, mode: str, recon_md: str) -> None:
         cites = [a for a in msg.get("annotations") or [] if a.get("type") == "url_citation"]
         if cites:
             case.emit("tool", name="web_search", input={"sources": len(cites)})
+            case.add_cost(tools=1)
         calls = msg.get("tool_calls") or []
         kept = {"role": "assistant", "content": msg.get("content") or ""}
         if calls:
@@ -515,6 +520,7 @@ def _agent_loop_openrouter(case: Case, mode: str, recon_md: str) -> None:
                                  "content": f"INVALID_INPUT: {err}. Re-issue the call with a complete JSON object."})
                 continue
             case.emit("tool", name=name, input=inp)
+            case.add_cost(tools=1)
             try:
                 out = _run_tool(case, name, inp)
             except Exception as e:

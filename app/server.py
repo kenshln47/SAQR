@@ -49,10 +49,15 @@ def _start(case: cases.Case, mode: str) -> None:
     from .agent import run_geolocate
     from .analysis import run_car, run_verify
     from .identify import run_person, run_plate
+    from .pool import get_pool
     target = {"region": lambda: run_geolocate(case, "region"), "street": lambda: run_geolocate(case, "street"),
               "private": lambda: run_geolocate(case, "private"), "verify": lambda: run_verify(case),
               "car": lambda: run_car(case), "person": lambda: run_person(case), "plate": lambda: run_plate(case)}[mode]
-    threading.Thread(target=target, daemon=True, name=f"case-{case.id}").start()
+
+    def queued() -> None:
+        get_pool().submit(target)
+
+    threading.Thread(target=queued, daemon=True, name=f"queue-{case.id}").start()
 
 
 def _hint(name: str) -> str:
