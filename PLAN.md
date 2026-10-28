@@ -24,14 +24,15 @@ Left open because it is a different vendor: `H-ESRI-01`.
 
 ## Phase 2 — accuracy
 
-`H-RANK-01`, `H-GEOCLIP-01`.
-Score median km, % <1 km, % <25 km, % country-correct, and ECE for confidence and for the stated radius.
-Three prior settings: off, GeoCLIP only (`prior.py --models geoclip`), StreetCLIP+GeoCLIP (non-commercial opt-in).
-If GeoCLIP-only is close to both models, keep StreetCLIP out. If the gap is large, the choice is a commercial StreetCLIP licence or another permissive model, not a silent skip.
-Wire scoring through GeoInt `bench.py score` and ground truth through `photo_session.py truth`.
-Confirm / dismiss on a candidate writes that truth into the case.
-Do not re-rank `OR_DEFAULT` from the October table. Re-rank only from a run this bench actually produces.
-`bench.py make-streetview` fetches keyless Google panoramas. Do not use it to build the corpus.
+Status: PARTIAL. Not done. `H-GEOCLIP-01` and `H-RANK-01` stay open.
+
+| Commit | What landed | What it does not close |
+|---|---|---|
+| `53370dc` | Commercial path calls `prior.py --models geoclip` after `--skip calib,prior` | No kilometre comparison against StreetCLIP or against prior-off |
+| `dcd8ba2` | `app/benchscore.py`: median km, share under 1 km, share under 25 km, country accuracy, ECE for confidence and for the stated radius. CI runs pytest and ruff on pillow, pytest, and ruff only | No corpus. Commons geosearch on 2026-10-28 returned `cirrussearch-too-busy-error`. `make-streetview` was not used |
+| `2d40308` | Confirm writes `truth` and `truth.json`. Dismiss does not replace an existing truth | One analyst label is not a bench |
+
+`OR_DEFAULT` was not re-ranked. Do not treat any October table figure as a new measurement.
 
 ## Phase 3 — reliability
 
@@ -41,7 +42,7 @@ In-memory case cache, event index, bounded pool, per-case cost in the UI, token 
 ## Phase 4 — packaging
 
 `M-TEST-01`, `M-PKG-01`, `M-GEOINT-01`, `M-IMPORT-01`, `L-PHOTO-01`.
-`pyproject.toml` already holds pytest and ruff settings from phase 1. Still missing: `uv.lock`, the dependency list, GitHub Actions, Dockerfile, `scripts/setup.sh` next to the `.bat` files. Vendor or fetch the geoint skill so a clone runs. Stop creating directories and failing cases at import time.
+`pyproject.toml` already holds pytest and ruff settings from phase 1. `.github/workflows/test.yml` (`dcd8ba2`) runs those tests without torch. Still missing: `uv.lock`, the dependency list, Dockerfile, `scripts/setup.sh` next to the `.bat` files. Vendor or fetch the geoint skill so a clone runs. Stop creating directories and failing cases at import time.
 
 ## Phase 5 — product
 

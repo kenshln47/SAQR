@@ -70,7 +70,8 @@ instead of being overwritten.
 ## Case files
 
 Each case is a folder `<date>_saqr-<name>-<id>\` with `report.md` (also served as HTML from the case view),
-`evidence\`, `original\`, `events.jsonl` (the live log), `notes.md` and `work\` (raw tool output).
+`evidence\`, `original\`, `events.jsonl` (the live log), `notes.md`, `truth.json` when an analyst confirms a pin, and `work\` (raw tool output).
+A confirmation is ground truth for that case. A dismissal marks the pin and does not replace a truth already saved.
 Cases go to `saqr\cases\`, or to `SAQR_CASES` if set; an install that already keeps cases in the folder above
 `saqr` keeps using it. Deleted cases go to `_saqr_trash\` in the same place. None of this is committed to git.
 
