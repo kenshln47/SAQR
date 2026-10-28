@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SAQR · privacy</title>
+<link rel="stylesheet" href="/fonts.css">
+<link rel="stylesheet" href="/report.css">
+</head>
+<body>
+<main>
+<h1>SAQR · PRIVACY</h1>
+<p dir="ltr">SAQR is a program on this computer. It listens on 127.0.0.1 only. There is no SAQR account and no SAQR server in the cloud. This page says what the code sends, and what it keeps. It is not a promise about anyone else's servers.</p>
+
+<h2>ماذا يبقى على الجهاز</h2>
+<p>كل قضية مجلد على القرص: الصورة الأصلية، الأدلة، التقرير، السجل، والملاحظات. الحذف ينقل المجلد إلى <span dir="ltr">_saqr_trash</span> في نفس مكان القضايا. ما فيه حذف نهائي من داخل البرنامج. المفاتيح تنحفظ في <span dir="ltr">saqr/.env</span> على الجهاز. تفضيلات الواجهة (ومنها تشغيل البحث العكسي) تنحفظ في المتصفح على هذا الجهاز.</p>
+
+<h2>تحليل الشخص واللوحة والمكان الخاص</h2>
+<p>وضع «من هذا الشخص؟» ياخذ صورة و/أو إيميل أو رقم جوال أو اسم. يبحث في الويب وفي Gravatar، ويسجّل اسماً وصفة وحسابات إذا نتائج البحث تدعمها. يحتاج مفتاح API.</p>
+<p>وضع «لوحة السيارة» يقرأ أحرف اللوحة، يسمّي المركبة، ويبحث عن نص اللوحة. اسم المالك ينكتب فقط إذا صفحة أظهرته. يحتاج مفتاح API.</p>
+<p>وضع «تحديد مكان خاص» ما يوقف عند المدينة. يقدر يبحث في إعلانات (Airbnb و aqar.fm و Bayut و Haraj) ويثبت مبنى إذا إعلان أو نص طابق الصورة. يقدر يقرأ رقم لوحة ويبحث عنه كنقطة إضافية.</p>
+<p>وضع «تحديد المنطقة» و«تحديد الشارع» يوقفان عند المدينة إذا الصورة شخص خاص أو بيت خاص، وما يثبتان المبنى.</p>
+
+<h2>ماذا يطلع من الجهاز</h2>
+<ul>
+<li>البحث العكسي مطفي افتراضياً. إذا انشغّل، الصورة تنرفع إلى Yandex و Baidu.</li>
+<li>إذا فيه مفتاح Anthropic أو OpenRouter، خطوات التحليل والصور اللي يشوفها النموذج تروح لذاك المزود.</li>
+<li>الخريطة تطلب بلاطات من <span dir="ltr">tiles.openfreemap.org</span>. طبقة القمر الصناعي في الواجهة من NASA GIBS (Blue Marble، زوم أصلي 8). بحث المكان في الواجهة يتصل بـ Nominatim.</li>
+<li>أدوات الشارع تستخدم Mapillary افتراضياً، أو Kartaview أو Panoramax. Google و Apple و Bing و Yandex للبانوراما تشتغل فقط بمفتاحها. قمر Google الصناعي في أداة الوكيل يحتاج مفتاح Google. Esri و Wayback ما ينطلبون.</li>
+</ul>
+<p>ما فيه حسابات متعددة. اللي يشغّل البرنامج هو اللي يملك الملفات.</p>
+<p><a href="/legal/terms.html">الشروط</a> · <a href="/legal/retention.html">الاحتفاظ</a></p>
+</main>
+</body>
+</html>

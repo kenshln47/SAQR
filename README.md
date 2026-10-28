@@ -84,6 +84,10 @@ A confirmation is ground truth for that case. Possible and dismissed mark the pi
 Cases go to `saqr\cases\`, or to `SAQR_CASES` if set; an install that already keeps cases in the folder above
 `saqr` keeps using it. Deleted cases go to `_saqr_trash\` in the same place. None of this is committed to git.
 
+## Privacy, terms, retention
+
+One user, on 127.0.0.1. No SAQR account. [Privacy](web/legal/privacy.html), [terms](web/legal/terms.html), and [retention](web/legal/retention.html) say what the code does, including person search, plate reading, and private-place mode. The help panel links the same pages.
+
 ## How it works
 
 `app/agent.py` runs the geoint skill's recon, puts the model guess on the map, then gives the AI model
