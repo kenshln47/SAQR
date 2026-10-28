@@ -6,18 +6,27 @@ is set), the map / Street View / satellite / search services the tools query, an
 
 ## Requirements
 
-- Windows, Python 3.12 via [uv](https://docs.astral.sh/uv/) (`winget install astral-sh.uv`)
-- The **geoint** skill at `%USERPROFILE%\.claude\skills\geoint` (or set `SAQR_GEOINT`); recon, Street View,
-  satellite and terrain tools come from it. The status bar says when it is missing.
+- Windows, Linux, or macOS, with Python 3.12 via [uv](https://docs.astral.sh/uv/) (`winget install astral-sh.uv` on Windows)
+- The **geoint** skill at `~/.claude/skills/geoint` (`%USERPROFILE%\.claude\skills\geoint` on Windows), or `SAQR_GEOINT`. Recon, Street View, satellite, and terrain tools come from it. The status bar says when it is missing.
 - An NVIDIA GPU is optional (MegaLoc / GeoCLIP run on the CPU too, slower). The first run downloads the models.
 
 ## Run
 
+Windows:
+
 1. Once: `setup.bat` (creates `.venv`, installs `requirements.txt`, CUDA torch with a CPU fallback, copies `.env.example`).
 2. `run.bat` → opens http://127.0.0.1:8765 when the server answers (`SAQR_PORT` changes the port).
-3. Optional but recommended: Settings (⚙) → **OpenRouter** (one key, any lab's model) or **Anthropic** (Claude direct).
-   SAQR checks the key and writes it to `saqr\.env` (`OPENROUTER_API_KEY` / `ANTHROPIC_API_KEY`, `SAQR_OR_MODEL`,
-   `SAQR_PROVIDER`). `.env.example` lists every setting.
+
+Linux and macOS:
+
+1. Once: `scripts/setup.sh` (same pins, CPU torch).
+2. `scripts/run.sh` → http://127.0.0.1:8765 (`SAQR_PORT` changes the port).
+
+Docker is optional and still binds `127.0.0.1` inside the container. On Linux, `docker run --network host` is how that port is the host's loopback. The image does not listen on `0.0.0.0`.
+
+Then, on either system: Settings (⚙) → **OpenRouter** (one key, any lab's model) or **Anthropic** (Claude direct).
+SAQR checks the key and writes it to `saqr\.env` (`OPENROUTER_API_KEY` / `ANTHROPIC_API_KEY`, `SAQR_OR_MODEL`,
+`SAQR_PROVIDER`). `.env.example` lists every setting.
 
 ## Models (OpenRouter)
 

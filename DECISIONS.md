@@ -11,3 +11,5 @@ ADR-004. Commercial runs still pass `--skip prior` so StreetCLIP is not loaded, 
 ADR-005. At most `SAQR_WORKERS` analyses run at once (default 2, hard cap 8). The upload returns immediately; the extra job waits for a slot before it starts a subprocess.
 
 ADR-006. Context is a token budget, not "6 images" or a 20000-character cut. The estimate is 2 characters per token and 1600 tokens per image. Defaults: `SAQR_CONTEXT_TOKENS=24000`, `SAQR_RECON_TOKENS=8000`. Provider usage is recorded when the response includes it.
+
+ADR-007. Docker keeps the 127.0.0.1 bind. Host networking is the way out of the container. Binding 0.0.0.0 is rejected.
