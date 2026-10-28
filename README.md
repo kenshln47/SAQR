@@ -1,128 +1,98 @@
 # SAQR · صقر — local visual geolocation
 
-Upload a photo, watch it get analysed live, and get a pin with a confidence radius and visual proof.
-The app, the case files and the local models run on this computer. What goes out: the AI reasoning step (if a key
-is set), the map / Street View / satellite / search services the tools query, and the reverse image search (see below).
+Upload a still photo. The case is a folder on this computer. The run can put a pin on a map with a radius and file the images the tools return.
+
+What stays local: the app, the case files, metadata, error-level analysis, and the local prior when those scripts run. What leaves the machine, when you turn it on: the AI call if a key is set, the map and search hosts the tools use, and reverse image search (off unless you tick it). The map does not work offline.
+
+This is not a measured accuracy claim. There is no scored SAQR photo corpus. Comparison with Graylark Raven's public pages is [GAP.md](GAP.md). That file does not add a SAQR error number.
 
 ## Requirements
 
-- Windows, Linux, or macOS, with Python 3.12 via [uv](https://docs.astral.sh/uv/) (`winget install astral-sh.uv` on Windows)
-- The **geoint** skill (MIT) is cloned by setup into `~/.claude/skills/geoint` (`%USERPROFILE%\.claude\skills\geoint` on Windows), or into `SAQR_GEOINT` if that is set, when `scripts/recon.py` is not already there. It is not copied into this repository. The status bar says when it is missing.
-- An NVIDIA GPU is optional (MegaLoc / GeoCLIP run on the CPU too, slower). The first run downloads the models.
+- Windows, Linux, or macOS. Python 3.12 via [uv](https://docs.astral.sh/uv/) (`winget install astral-sh.uv` on Windows).
+- The GeoInt skill (MIT) is cloned by setup into `~/.claude/skills/geoint` (`%USERPROFILE%\.claude\skills\geoint` on Windows), or into `SAQR_GEOINT` if that is set, when `scripts/recon.py` is not already there. It is not copied into this repository. The status bar says when it is missing.
+- An NVIDIA GPU is optional. `setup.bat` tries a CUDA torch wheel and falls back to CPU torch. `scripts/setup.sh` installs CPU torch. GeoCLIP and MegaLoc weights are not in this repo. GeoInt downloads them when those scripts run. StreetCLIP is not on the commercial path.
 
 ## Run
 
 Windows:
 
-1. Once: `setup.bat` (creates `.venv`, installs `requirements.txt`, CUDA torch with a CPU fallback, copies `.env.example`).
-2. `run.bat` → opens http://127.0.0.1:8765 when the server answers (`SAQR_PORT` changes the port).
+1. Once: `setup.bat` (creates `.venv`, installs `requirements.txt`, installs torch as above, copies `.env.example`).
+2. `run.bat` opens http://127.0.0.1:8765 when the server answers. `SAQR_PORT` changes the port.
 
 Linux and macOS:
 
-1. Once: `scripts/setup.sh` (same pins, CPU torch).
-2. `scripts/run.sh` → http://127.0.0.1:8765 (`SAQR_PORT` changes the port).
+1. Once: `scripts/setup.sh`.
+2. `scripts/run.sh` → http://127.0.0.1:8765. `SAQR_PORT` changes the port.
 
-Docker is optional and still binds `127.0.0.1` inside the container. On Linux, `docker run --network host` is how that port is the host's loopback. The image does not listen on `0.0.0.0`.
+Docker is optional. The process inside the container still binds `127.0.0.1`. On Linux, `docker run --network host` is how that port is the host's loopback. The image is not told to listen on `0.0.0.0`.
 
-Then, on either system: Settings (⚙) → **OpenRouter** (one key, any lab's model) or **Anthropic** (Claude direct).
-SAQR checks the key and writes it to `saqr\.env` (`OPENROUTER_API_KEY` / `ANTHROPIC_API_KEY`, `SAQR_OR_MODEL`,
-`SAQR_PROVIDER`). `.env.example` lists every setting.
+Then Settings (⚙) → **OpenRouter** (one key) or **Anthropic** (Claude direct). SAQR checks the key and writes `saqr\.env` (`OPENROUTER_API_KEY` / `ANTHROPIC_API_KEY`, `SAQR_OR_MODEL`, `SAQR_PROVIDER`). `.env.example` lists the settings.
 
-## Models (OpenRouter)
+## Models
 
-The picker lists these, ranked by GeoGuessBench v2 (2026-10-06, 210 street photos, one guess each, medium effort),
-with live prices from OpenRouter. Any other model that takes images and supports tools can be typed in.
+`OR_DEFAULT` is `anthropic/claude-opus-5.5` (`app/config.py`). Settings shows `RECOMMENDED` from `app/openrouter.py`, plus a price per million tokens when the OpenRouter catalog returns one. The comment above that list says the order is GeoGuessBench v2 (2026-10-06, 210 street photos, one guess, medium effort) and that the bench measures the eye, not tool use. SAQR did not run that bench. `H-RANK-01` is open. The default was not changed.
 
-| Model | Benchmark | Median error | Country right |
-|---|---|---|---|
-| `anthropic/claude-opus-5.5` (default) | 1st | 10.9 km | 86% |
-| `anthropic/claude-fable-5.1` | tied 1st | 8.7 km | 87% |
-| `meta/muse-glimmer-30b` | 3rd, cheapest | 49.9 km | 78% |
-| `openai/gpt-6-astra` | 4th | 21.6 km | 77% |
-| `openai/gpt-6.1-sol` | 5th | 37.8 km | 75% |
-| `z-ai/glm-5.3-flash` | 6th | 61.7 km | 75% |
-| `google/gemini-4-argon` | not benchmarked yet | | |
+The list's own notes do not agree. The default row is tagged `الأفضل` and its note says الأول, median 10.9 km, country 86%. The next row, `anthropic/claude-fable-5.1`, has an empty tag and a note that puts it level with that row at 8.7 km. 8.7 is a smaller median than 10.9, so those two notes are not one ranking, and this README does not pick a winner from them. The rest of the notes, as written in that file: `meta/muse-glimmer-30b` الثالث, 49.9 km, 78%; `openai/gpt-6-astra` الرابع, 21.6 km, 77%; `openai/gpt-6.1-sol` الخامس, 37.8 km, 75%; `z-ai/glm-5.3-flash` السادس, 61.7 km, 75%; `google/gemini-4-argon` not measured by that bench. None of these figures is a SAQR result.
 
-The benchmark measures the eye, not tool use; SAQR's prompts were tuned on Claude, so other models may call the
-tools less well. Web search on OpenRouter uses its `openrouter:web_search` server tool (billed by OpenRouter).
+Web search on OpenRouter uses its `openrouter:web_search` server tool when the model call includes it.
 
-Without a key SAQR runs on local metadata, OCR, object detection, and a GeoCLIP world prior (MIT).
-StreetCLIP (CC-BY-NC-4.0) is not part of that path. `recon.py` is called with `--skip calib,prior`,
-then `prior.py --models geoclip` writes `work/recon/prior`. `SAQR_ALLOW_NC_MODELS=1` on a private,
-non-commercial install runs StreetCLIP and GeoCLIP together inside recon and does not add that
-follow-up call. Reverse image search is a separate switch, described below. It is not the prior.
-The StreetCLIP-versus-GeoCLIP gap has not been scored on a SAQR corpus (H-GEOCLIP-01). A local
-country guess is a starting area, not a measured accuracy.
+Without a key, region and street runs use local metadata, OCR, object detection, and a GeoCLIP world prior (MIT). `recon.py` is called with `--skip calib,prior`, then `prior.py --models geoclip` writes `work/recon/prior`. `SAQR_ALLOW_NC_MODELS=1` (also `true` / `yes` / `on`) on a private, non-commercial install runs StreetCLIP and GeoCLIP together inside recon and does not add that follow-up. The StreetCLIP-versus-GeoCLIP gap has not been scored (`H-GEOCLIP-01`). A local country guess is a starting area, not a measured accuracy. Reverse image search is a separate switch. It is not the prior.
 
-## Modules
+## What the modes actually do
 
-| Module | What it does |
+Find Region and Find Street use `SYSTEM` in `app/agent.py`. That text tells the model not to geolocate a private person's home, school, or routine, to stop at city level, and never to read a plate number.
+
+Private-place mode does not keep that stop. The prompt sent is `PRIVATE_NOTE` instead of `SYSTEM` (`H-PROMPT-01`). `PRIVATE_NOTE` refers to a city-level rule "above" that is not in the same message. It tells the model to pin a building when a listing or a text anchor matches, to match a school, to name a place from a routine photo, and that a family plate may be read and searched as an extra anchor. `listing_search` is a DuckDuckGo text query of `airbnb.com`, `aqar.fm`, `bayut.sa`, and `haraj.com.sa`. It is not a photo index of listings.
+
+Person mode takes a photo and/or an email, a phone number, or a name. It uses web search and Gravatar, and it files a name, a role, and accounts when `file_person` is called. It needs an API key.
+
+Plate mode reads the plate characters, names the vehicle, and searches that plate text. An owner name is filed only when a page shows one. It needs an API key.
+
+The car module's prompt says not to read the plate. Find Region and Find Street tell the model a plate counts only by style, colours, and country or region code.
+
+`B-PRIV-01` stays open. The contradiction is in the code: region and street stop at the city for a private person or a private home; private-place, person, and plate do not. Describing it here is the change. Those modules were not removed and were not extended.
+
+| Module | What the code does |
 |---|---|
-| تحديد المنطقة (Find Region) | Quick pass: country / region / city with an honest radius. Private homes and private people stop at city level in this mode. |
-| تحديد الشارع (Find Street) | Deep pass: street-level sweeps (MegaLoc), terrain skyline matching, satellite evidence. Same city-level stop for a private home. |
-| تحديد مكان خاص (Private place) | Separate prompt. It does not stop at the city. It can search listings (Airbnb, aqar.fm, Bayut, Haraj) and pin a building when a listing or a text anchor matches the photo. It may read and search a plate number as an extra anchor. |
-| من هذا الشخص؟ (Who is this?) | Photo and/or an email, a phone number, or a name. Web search and Gravatar. Files a name, a role, and accounts when the search results support them. Needs an API key. |
-| لوحة السيارة (Plate) | Reads the plate characters, names the vehicle, and searches that plate text. An owner name is filed only when a page shows one. Needs an API key. |
-| التحقق من الصورة (Verify Image) | Metadata + error level analysis + an AI reading of manipulation / AI-generation signals |
-| تحديد السيارة (Identify Car) | Make, model, year range from exterior or interior. This module's prompt does not read the plate. Needs an API key. |
-| القضايا (Cases) | Every case on one map; click to reopen, replay its live log, stop or re-run it |
+| تحديد المنطقة (Find Region) | Country / region / city and a radius. Private homes and private people stop at city level in this mode. |
+| تحديد الشارع (Find Street) | MegaLoc sweeps, terrain skyline, satellite tool. Same city-level stop for a private home. |
+| تحديد مكان خاص (Private place) | Separate prompt. Does not stop at the city. Can search listing text and pin a building when a listing or a text anchor matches. May read a plate. |
+| من هذا الشخص؟ (Who is this?) | Photo and/or email, phone, or name. Web search and Gravatar. Files a name, a role, and accounts. Needs an API key. |
+| لوحة السيارة (Plate) | Reads the characters, names the vehicle, searches that plate text. Owner name only when a page shows one. Needs an API key. |
+| التحقق من الصورة (Verify Image) | Metadata and error-level analysis always. With a key, one model reading: an assessment, two likelihoods, and signals. No named-generator list and no separate face-swap score. Without a key the assessment is inconclusive and the local checks still run. |
+| تحديد السيارة (Identify Car) | One make, model, year range, and body type. Not ten ranked candidates and not reference images. The prompt does not read the plate. Needs an API key. |
+| القضايا (Cases) | Cases on one map. Confirm writes `truth.json`. Possible and dismissed mark the pin and do not write or replace a truth. |
 
-In a case: **stop** ends a run after the current step, **re-run** starts a new case from the same photo with another
-module (or with/without reverse search), and the **notes** tab keeps your own notes, which go into the report.
-Pins, measure lines and notes on the map board are saved in `saqr_board.json`; a damaged board file is set aside
-instead of being overwritten.
+In a case: **stop** ends a run after the current step, **re-run** starts a new case from the same photo when that photo is still there (if it is gone, the rerun is HTTP 409), and the **notes** tab is your text, which goes into the report. Pins, measure lines, and notes on the map board are saved in `saqr_board.json`. A damaged board file is set aside instead of being overwritten.
 
 ## Reverse image search
 
-"بحث عكسي" defaults to off for Find Region, Find Street, Private place, and Plate. Tick it only when the photo may leave this computer. It then uploads the photo to Yandex and Baidu to look for other copies of it. A case that already stored `rev: true` stays on, including on re-run. A browser that already saved the checkbox as on keeps that choice.
+"بحث عكسي" defaults to off for Find Region, Find Street, Private place, and Plate. Tick it only when the photo may leave this computer. It then uploads the photo to Yandex and Baidu. A case that already stored `rev: true` stays on, including on re-run, unless the re-run body says otherwise. A browser that already saved the checkbox as on keeps that choice.
 
 ## Case files
 
-Each case is a folder `<date>_saqr-<name>-<id>\` with `report.md` (also served as HTML from the case view),
-`evidence\`, `original\`, `events.jsonl` (the live log), `notes.md`, `truth.json` when an analyst confirms a pin, and `work\` (raw tool output).
-A confirmation is ground truth for that case. Possible and dismissed mark the pin and do not write or replace a truth already saved.
-Cases go to `saqr\cases\`, or to `SAQR_CASES` if set; an install that already keeps cases in the folder above
-`saqr` keeps using it. Deleted cases go to `_saqr_trash\` in the same place. None of this is committed to git.
+Each case is a folder `<date>_saqr-<name>-<id>\` with `report.md` (also served as HTML), `evidence\`, `original\`, `events.jsonl`, `notes.md`, `truth.json` only after an analyst confirms a pin, and `work\`. Cases go to `saqr\cases\`, or to `SAQR_CASES` if set. An install that already keeps cases in the folder above `saqr` keeps using it. Delete moves the folder to `_saqr_trash\` in that same place. It is a move, not a wipe. None of this is committed to git.
 
 ## Privacy, terms, retention
 
-One user, on 127.0.0.1. No SAQR account. [Privacy](web/legal/privacy.html), [terms](web/legal/terms.html), and [retention](web/legal/retention.html) say what the code does, including person search, plate reading, and private-place mode. The help panel links the same pages.
+One user, on 127.0.0.1. No SAQR account. [Privacy](web/legal/privacy.html), [terms](web/legal/terms.html), and [retention](web/legal/retention.html) name person search, plate reading, and private-place mode. The help panel links the same pages. The help text does not say the product refuses private homes and identities.
 
 ## How it works
 
-`app/agent.py` runs the geoint skill's recon, puts the model guess on the map, then gives the AI model
-(Claude direct: `claude-opus-5-5`, adaptive thinking; or any OpenRouter model via `app/openrouter.py`) these tools:
-`view_photo`, `web_search`, `geocode`, `osm_query`, `listing_search`, `streetview_near`, `streetview_views`, `streetview_sweep`,
-`satellite`, `terrain_view`, `pin_candidate`, `final_answer`. Person and plate modes use a separate loop: `view_photo`,
-`web_lookup`, `gravatar_lookup` (person only), and a single file call. Every image a tool makes is shown to the model and
-filed as evidence. The browser follows the run over server-sent events and picks up where it left off after a
-reconnect. The server only answers on 127.0.0.1 and rejects requests from other sites. At most `SAQR_WORKERS` analyses run at once (default 2). A further upload is accepted and waits for a free slot before it starts a subprocess. The case panel shows turns, tool calls, and token totals when the provider reports them. The running transcript is cut to a token budget (`SAQR_CONTEXT_TOKENS`, default 24000; an image counts as 1600), not a fixed number of images. Recon text in the first prompt is cut to `SAQR_RECON_TOKENS` (default 8000). That estimate is 2 characters per token. The provider's own usage is what the panel adds up when a response includes it.
+`app/agent.py` runs the GeoInt recon, puts the model guess on the map, then gives the model these tools: `view_photo`, `web_search`, `geocode`, `osm_query`, `listing_search`, `streetview_near`, `streetview_views`, `streetview_sweep`, `satellite`, `terrain_view`, `pin_candidate`, `final_answer`. Claude direct uses `claude-opus-5-5` with adaptive thinking. OpenRouter uses `app/openrouter.py`. Person and plate use a separate loop in `app/identify.py`: `view_photo`, `web_lookup`, `gravatar_lookup` (person only), and one file call. Images a tool writes are shown to the model and filed as evidence. The browser follows the run over server-sent events. The server only answers on 127.0.0.1 and rejects mutations from other origins. There is no CORS middleware.
 
-The interface is a dark frosted-glass layout over MapLibre GL (vendored in `web/vendor/`, BSD-3, with the
-mapbox-gl-rtl-text plugin, BSD-2, so Arabic map labels are joined and ordered right to left; Arabic place names are
-shown where OpenStreetMap has them). The style document is local (`web/vendor/ofm-dark.json`). The tiles, glyphs, and
-sprites are requested from `tiles.openfreemap.org` when the map is on screen. That public instance allows commercial
-use and asks for the OpenFreeMap / OpenMapTiles / OpenStreetMap attribution, which MapLibre draws from their TileJSON.
-It is Arabic right-to-left and also works on a phone. Inter and IBM Plex Sans Arabic are vendored (`web/fonts/`, SIL OFL).
+At most `SAQR_WORKERS` analyses run at once (default 2, cap 8). A further upload waits. The case panel shows turns, tool calls, and token totals when the provider reports them. The running transcript is cut to `SAQR_CONTEXT_TOKENS` (default 24000). An image counts as 1600 in that estimate. Recon text in the first prompt is cut to `SAQR_RECON_TOKENS` (default 8000). The estimate is 2 characters per token, not the provider's tokenizer. The panel adds the provider's own usage when a response includes it.
 
-## Limits (by design)
+The interface is a dark frosted-glass layout over MapLibre GL JS 4.7.1 (vendored in `web/vendor/`, BSD-3) and mapbox-gl-rtl-text (BSD-2, plus ICU) so Arabic map labels can be shaped. The style document is local (`web/vendor/ofm-dark.json`). Tiles, glyphs, and sprites are requested from `tiles.openfreemap.org` when the map is on screen. If that request fails, the map does not load; the rest of the app still runs. OpenFreeMap's own pages, fetched with the style, say commercial use is allowed, the service is as-is with no SLA, and offline downloads are capped. Attribution is drawn from their TileJSON (OpenFreeMap, OpenMapTiles, OpenStreetMap). The style's upstream design is the OpenMapTiles dark-matter style (BSD-3 code, CC-BY-4.0 design); the file in `web/vendor/` is the runtime JSON, not that source repo. A shaded Natural Earth raster in the style is public domain. Inter and IBM Plex Sans Arabic are vendored (`web/fonts/`, SIL OFL). The page does not request `fonts.googleapis.com`.
 
-- Exact points still need an anchor (text, landmark, distinctive skyline, a covered road). A city can be named
-  from one strong cluster of clues. Generic landscapes stay at region level with a wide radius instead of an invented point.
-  Lookalike Gulf cities are compared explicitly; the tool must not default to Dubai.
-- Find Region and Find Street stop at city level when the photo is a private person or a private home, and they do not pin the building. Private-place mode does not keep that stop.
-- Person search from a photo, an email, a phone number, or a name is built. So is listing search, and so is reading a plate number in the plate module and in private-place mode. The car module does not read the plate. Find Region / Find Street treat a plate only by style, colours, and country or region code.
-- Street-level search defaults to Mapillary. Kartaview and Panoramax are the other open providers.
-  Google Street View, Google satellite tiles, and Apple, Bing, and Yandex panoramas stay off until their own
-  key is set: `SAQR_GOOGLE_KEY` or `GOOGLE_MAPS_API_KEY`, `SAQR_APPLE_KEY`, `SAQR_BING_KEY`, `SAQR_YANDEX_KEY`.
-  A Google key does not unlock the others. The map's قمر صناعي toggle is NASA GIBS Blue Marble Next Generation
-  (Web Mercator, native zoom 8, not a building-level picture). The agent's `satellite` tool does not call Esri or
-  Wayback. Google satellite tiles still need a Google key. Bing is still passed through to GeoInt when the model asks for it.
-- Each AI analysis costs API credit; Find Street costs more than Find Region.
+## Limits that are actually in the code
+
+- A tight point still needs an anchor (readable text, a distinctive skyline, a covered road). The region/street prompt says a generic landscape stays wide, and lookalike Gulf cities are not to be defaulted to Dubai.
+- Street-level search defaults to Mapillary. Google Street View, Google satellite tiles, and Apple, Bing, and Yandex panoramas each need their own key: `SAQR_GOOGLE_KEY` or `GOOGLE_MAPS_API_KEY`, `SAQR_APPLE_KEY`, `SAQR_BING_KEY`, `SAQR_YANDEX_KEY`. One Google key does not unlock the others. `streetview_near` and `streetview_views` call Google and refuse without that key.
+- The قمر صناعي toggle is NASA GIBS Blue Marble Next Generation, Web Mercator, max zoom 8. It is not Esri. The agent satellite tool does not call Esri or Wayback. Google satellite still needs a Google key. Bing satellite is still forwarded to GeoInt when the model asks for `bing`.
+- Verify does not name a generator and does not emit a separate face-swap score. Car is one vehicle object, not a ranked ten with reference photos. There is no video mode.
+- Each AI analysis spends provider credit. Find Street is allowed more tool use than Find Region.
 
 ## Licence
 
-SAQR's own code is proprietary. See `LICENSE`, `NOTICE`, and `THIRD_PARTY.md`.
-MapLibre GL JS (BSD-3-Clause) and mapbox-gl-rtl-text (BSD-2-Clause, plus the ICU notice) are vendored in `web/vendor/`.
-The GeoInt scripts are MIT and are not in this repository. A commercial run calls GeoInt `prior.py --models geoclip` only.
-StreetCLIP weights are not included; they are CC-BY-NC-4.0 and load only when `SAQR_ALLOW_NC_MODELS=1`.
+SAQR's own code is proprietary. See `LICENSE`, `NOTICE`, and `THIRD_PARTY.md`. That blocks read-only redistribution of this tree unless a separate grant says otherwise. MapLibre GL JS (BSD-3-Clause) and mapbox-gl-rtl-text (BSD-2-Clause, plus the ICU notice) are vendored in `web/vendor/`. The GeoInt scripts are MIT and are not in this repository. A commercial run calls GeoInt `prior.py --models geoclip` only. StreetCLIP weights are not included. They are CC-BY-NC-4.0 and load only when `SAQR_ALLOW_NC_MODELS=1`.
