@@ -91,7 +91,10 @@ class Case:
 
     @property
     def photo(self) -> Path:
-        files = sorted((self.dir / "original").glob("*"))
+        folder = self.dir / "original"
+        files = sorted(p for p in folder.glob("*") if p.is_file()) if folder.is_dir() else []
+        if not files:
+            raise FileNotFoundError(f"no original photo in {folder}")
         return files[0]
 
     @property

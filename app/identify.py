@@ -285,7 +285,11 @@ def run_person(case: Case) -> None:
     try:
         d = case.load()
         query = (d.get("query") or "").strip()
-        text_only = bool(d.get("text_only")) or not case.photo.exists()
+        try:
+            photo_ok = case.photo.is_file()
+        except FileNotFoundError:
+            photo_ok = False
+        text_only = bool(d.get("text_only")) or not photo_ok
         case.update(status="recon", engine=engine_label() if has_ai() else "local")
         if text_only:
             case.emit("stage", stage="recon", text="إدخال نصي: نبحث مباشرة")

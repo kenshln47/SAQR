@@ -231,7 +231,12 @@ def rerun_case(cid: str, request: Request, body: dict = Body(default={})):
     old = _case(cid)
     d = old.load()
     mode = body.get("mode") or d.get("mode", "region")
-    return _new(d.get("filename") or old.photo.name, old.photo.read_bytes(), mode,
+    try:
+        raw = old.photo.read_bytes()
+        name = d.get("filename") or old.photo.name
+    except FileNotFoundError:
+        raise HTTPException(409, "الصورة الأصلية مو موجودة، ما أقدر أعيد التحليل")
+    return _new(name, raw, mode,
                 rev=bool(body.get("rev", d.get("rev", True))), rerun_of=old.id,
                 query=d.get("query", ""), text_only=bool(d.get("text_only")))
 
