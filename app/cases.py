@@ -1,6 +1,7 @@
 """Case folders on disk: <cases dir>\\<date>_saqr-<id>\\ with case.json, events.jsonl, original/, evidence/, report.md."""
 from __future__ import annotations
 
+import copy
 import io
 import json
 import math
@@ -25,6 +26,9 @@ except ImportError:
     pass
 
 _lock = threading.Lock()
+_cache_lock = threading.Lock()
+_meta_cache: dict[str, dict] = {}
+_disk_reads: dict[str, int] = {}
 RUNNING = ("queued", "recon", "analysing")
 EXT = {"JPEG": ".jpg", "MPO": ".jpg", "PNG": ".png", "WEBP": ".webp", "GIF": ".gif", "BMP": ".bmp",
        "TIFF": ".tif", "HEIF": ".heic", "AVIF": ".avif"}
@@ -80,17 +84,43 @@ class Case:
         return p if p.exists() else self.photo
 
     # ---- state
-    def load(self) -> dict:
-        for attempt in range(20):
+    def _meta_key(self) -> str:
+        return str(self.meta_path)
+
+    def disk_reads(self) -> int:
+        """How many times this case.json was read from disk in this process."""
+        with _cache_lock:
+            return _disk_reads.get(self._meta_key(), 0)
+
+    def _read_meta_file(self) -> dict:
+        for _attempt in range(20):
             try:
                 return json.loads(self.meta_path.read_text(encoding="utf-8"))
             except (json.JSONDecodeError, PermissionError):
                 time.sleep(0.05)
         return json.loads(self.meta_path.read_text(encoding="utf-8"))
 
+    def load(self) -> dict:
+        """Return case.json. The first call in this process reads the file; later calls use the copy `_save` stored."""
+        key = self._meta_key()
+        with _cache_lock:
+            hit = _meta_cache.get(key)
+            if hit is not None:
+                return copy.deepcopy(hit)
+        data = self._read_meta_file()
+        with _cache_lock:
+            existing = _meta_cache.get(key)
+            if existing is not None:
+                return copy.deepcopy(existing)
+            _meta_cache[key] = data
+            _disk_reads[key] = _disk_reads.get(key, 0) + 1
+            return copy.deepcopy(data)
+
     def _save(self, d: dict) -> None:
         d["updated"] = _now()
         _write_atomic(self.meta_path, json.dumps(d, ensure_ascii=False, indent=1))
+        with _cache_lock:
+            _meta_cache[self._meta_key()] = copy.deepcopy(d)
 
     def update(self, **fields) -> dict:
         with _lock:
