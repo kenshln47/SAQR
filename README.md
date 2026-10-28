@@ -91,3 +91,9 @@ shown where OpenStreetMap has them). It is Arabic right-to-left and also works o
   searched or recorded, and the car module ignores the plate entirely.
 - Street View and Google tiles are fetched without an API key: fine for personal use, not for a public service.
 - Each AI analysis costs API credit; Find Street costs more than Find Region.
+
+## Licence
+
+SAQR's own code is proprietary. See `LICENSE`, `NOTICE`, and `THIRD_PARTY.md`.
+MapLibre GL JS (BSD-3-Clause) and mapbox-gl-rtl-text (BSD-2-Clause, plus the ICU notice) are vendored in `web/vendor/`.
+The GeoInt scripts are MIT and are not in this repository. StreetCLIP weights are not included; they are CC-BY-NC-4.0.

@@ -1,0 +1,11 @@
+Copyright (c) 2026 KENSHIN
+
+All rights reserved.
+
+SAQR's own source code, prompts, and visual design are proprietary. No permission
+is granted to copy, modify, merge, publish, distribute, sublicense, or sell them
+without a written licence from the copyright holder.
+
+Third-party components keep their own licences. The notices that have to travel
+with a binary or a redistribution are in NOTICE and THIRD_PARTY.md. The files
+under web/vendor/ are not covered by the paragraph above.

@@ -1,0 +1,24 @@
+SAQR
+Copyright (c) 2026 KENSHIN. All rights reserved. See LICENSE.
+
+This product includes third-party software. Full texts live next to the files
+they cover and are summarised in THIRD_PARTY.md.
+
+MapLibre GL JS 4.7.1
+Copyright (c) 2023, MapLibre contributors
+BSD-3-Clause. See web/vendor/maplibre-gl.LICENSE.txt.
+Contains code from mapbox-gl-js v1.13 and earlier, Copyright (c) 2020, Mapbox,
+also BSD-3-Clause, same file.
+
+mapbox-gl-rtl-text
+Copyright (c) 2017 Mapbox
+BSD-2-Clause. See web/vendor/mapbox-gl-rtl-text.LICENSE.md.
+Derived from the International Components for Unicode (ICU). The ICU copyright
+and permission notice is in that same file and must stay with the plugin.
+
+GeoInt scripts (external, not vendored in this repository)
+Copyright (c) 2026 GeoInt contributors
+Copyright (c) 2026 Oldcircle
+MIT. https://github.com/marouane53/GeoInt/blob/main/LICENSE
+The script licence does not cover model weights those scripts download.
+StreetCLIP weights are CC-BY-NC-4.0 and are not included here.
