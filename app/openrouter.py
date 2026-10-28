@@ -34,13 +34,18 @@ _lock = threading.Lock()
 
 
 def catalog() -> dict[str, dict]:
-    """Public model list (no key needed), cached for an hour."""
+    """Public model list (no key needed), cached for an hour. The lock is not held during the request."""
     with _lock:
-        if time.time() - _cat["at"] > 3600 or not _cat["models"]:
-            r = requests.get(f"{BASE}/models", headers=HEADERS, timeout=30)
-            r.raise_for_status()
-            _cat["models"] = {m["id"]: m for m in r.json().get("data", [])}
-            _cat["at"] = time.time()
+        fresh = time.time() - _cat["at"] <= 3600 and bool(_cat["models"])
+        cached = _cat["models"]
+    if fresh:
+        return cached
+    r = requests.get(f"{BASE}/models", headers=HEADERS, timeout=30)
+    r.raise_for_status()
+    models = {m["id"]: m for m in r.json().get("data", [])}
+    with _lock:
+        _cat["models"] = models
+        _cat["at"] = time.time()
         return _cat["models"]
 
 

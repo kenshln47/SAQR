@@ -25,7 +25,8 @@ try:   # iPhone photos: lets PIL (and so every analysis path) open HEIC/HEIF
 except ImportError:
     pass
 
-_lock = threading.Lock()
+_guard = threading.Lock()
+_case_locks: dict[str, threading.RLock] = {}
 _cache_lock = threading.Lock()
 _meta_cache: dict[str, dict] = {}
 _disk_reads: dict[str, int] = {}
@@ -35,6 +36,17 @@ RUNNING = ("queued", "recon", "analysing")
 EXT = {"JPEG": ".jpg", "MPO": ".jpg", "PNG": ".png", "WEBP": ".webp", "GIF": ".gif", "BMP": ".bmp",
        "TIFF": ".tif", "HEIF": ".heic", "AVIF": ".avif"}
 BROWSER_SAFE = {".jpg", ".png", ".webp", ".gif", ".bmp", ".avif"}
+
+
+def _lock_for(folder: Path) -> threading.RLock:
+    """One lock per case folder, shared by every Case object that points at it."""
+    key = str(folder)
+    with _guard:
+        lock = _case_locks.get(key)
+        if lock is None:
+            lock = threading.RLock()
+            _case_locks[key] = lock
+        return lock
 
 
 def _now() -> str:
@@ -58,6 +70,9 @@ class Case:
     def __init__(self, folder: Path):
         self.dir = folder
         self.id = folder.name
+
+    def _lock(self) -> threading.RLock:
+        return _lock_for(self.dir)
 
     # ---- files
     @property
@@ -125,7 +140,7 @@ class Case:
             _meta_cache[self._meta_key()] = copy.deepcopy(d)
 
     def update(self, **fields) -> dict:
-        with _lock:
+        with self._lock():
             d = self.load()
             d.update(fields)
             self._save(d)
@@ -135,7 +150,7 @@ class Case:
         """Append one event. The in-memory index is what the stream tails; the file is the durable copy."""
         ev = {"t": time.time(), "kind": kind, **data}
         line = json.dumps(ev, ensure_ascii=False) + "\n"
-        with _lock:
+        with self._lock():
             self._hydrate_events()
             with self.events_path.open("a", encoding="utf-8") as f:
                 f.write(line)
@@ -166,12 +181,12 @@ class Case:
         return buf
 
     def events(self, start: int = 0) -> list[dict]:
-        with _lock:
+        with self._lock():
             buf = self._hydrate_events()
             return copy.deepcopy(buf[max(0, start):])
 
     def add_candidate(self, cand: dict) -> list[dict]:
-        with _lock:
+        with self._lock():
             d = self.load()
             cands = d.get("candidates", [])
             cand["n"] = len(cands) + 1
@@ -186,7 +201,7 @@ class Case:
         """Analyst confirm or dismiss. Confirm writes truth. Dismiss does not replace it."""
         if verdict not in {"confirmed", "dismissed"}:
             raise ValueError("verdict")
-        with _lock:
+        with self._lock():
             d = self.load()
             if n is not None:
                 match = next((c for c in d.get("candidates") or [] if c.get("n") == n), None)
