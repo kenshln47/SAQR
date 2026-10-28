@@ -6,6 +6,8 @@ as case evidence so the UI can display them.
 from __future__ import annotations
 
 import base64
+import hashlib
+import html
 import io
 import json
 import math
@@ -24,6 +26,7 @@ from .cases import Case   # importing cases registers the HEIC opener
 from .config import SCRIPTS, SECRET_ENV, UV, VENV_PY
 
 SAT_SOURCE = re.compile(r"(esri|google|google-hybrid|bing|wayback:\d{4}(-\d{2}){0,2})")
+UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) SAQR/1.0 (+local)"
 
 
 @dataclass
@@ -222,3 +225,73 @@ def distance_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     p1, p2 = math.radians(lat1), math.radians(lat2)
     a = math.sin((p2 - p1) / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(math.radians(lon2 - lon1) / 2) ** 2
     return 6371 * 2 * math.asin(math.sqrt(a))
+
+
+# ---------------------------------------------------------------- keyless search (no API key)
+
+LISTING_SITES = ("airbnb.com", "aqar.fm", "bayut.sa", "haraj.com.sa")
+
+
+def _ddg(query: str, limit: int = 8) -> list[dict]:
+    """DuckDuckGo's HTML endpoint: no key, no quota. Returns [{title, url, snippet}]."""
+    body = urllib.parse.urlencode({"q": query}).encode()
+    req = urllib.request.Request("https://html.duckduckgo.com/html/", data=body,
+                                 headers={"User-Agent": UA, "Content-Type": "application/x-www-form-urlencoded"})
+    with urllib.request.urlopen(req, timeout=30) as r:
+        page = r.read().decode("utf-8", "replace")
+    clean = lambda s: html.unescape(re.sub(r"<[^>]+>", "", s)).strip()
+    out = []
+    for m in list(re.finditer(r'<a[^>]*class="result__a"[^>]*>(.*?)</a>', page, re.S))[:limit]:
+        href = re.search(r'href="([^"]+)"', m.group(0))
+        if not href:
+            continue
+        real = re.search(r"uddg=([^&]+)", href.group(1))
+        out.append({"title": clean(m.group(1)),
+                    "url": urllib.parse.unquote(real.group(1)) if real else href.group(1), "snippet": ""})
+    for row, s in zip(out, re.findall(r'class="result__snippet"[^>]*>(.*?)</a>', page, re.S)):
+        row["snippet"] = clean(s)
+    return out
+
+
+def web_lookup(query: str, sites: str = "", limit: int = 8) -> ToolOut:
+    """Keyless web search. sites = comma-separated domains, searched one by one."""
+    try:
+        rows = []
+        if sites:
+            for s in [x.strip() for x in sites.split(",") if x.strip()][:4]:
+                rows += _ddg(f"{query} site:{s}", limit=4)
+        else:
+            rows = _ddg(query, limit=limit)
+    except Exception as e:
+        return ToolOut(f"web search failed: {e}", is_error=True)
+    return ToolOut(json.dumps(rows, ensure_ascii=False, indent=1) if rows else f"no results for: {query}")
+
+
+def listing_search(query: str, sites: str = "") -> ToolOut:
+    """Rental / property listings: the same photo often sits on Airbnb, aqar.fm, Bayut or Haraj."""
+    return web_lookup(query, sites or ",".join(LISTING_SITES))
+
+
+def gravatar_lookup(case: Case, email: str) -> ToolOut:
+    """Gravatar profile for an email (md5 of the address). Free, no key. The avatar is filed so you can compare faces."""
+    h = hashlib.md5(email.strip().lower().encode()).hexdigest()
+    try:
+        req = urllib.request.Request(f"https://gravatar.com/{h}.json", headers={"User-Agent": UA})
+        with urllib.request.urlopen(req, timeout=20) as r:
+            entry = (json.load(r).get("entry") or [{}])[0]
+    except Exception as e:
+        return ToolOut(f"no gravatar profile for {email} ({e})")
+    imgs: list[tuple[Path, str]] = []
+    try:
+        with urllib.request.urlopen(urllib.request.Request(f"https://www.gravatar.com/avatar/{h}?s=400&d=404",
+                                                           headers={"User-Agent": UA}), timeout=20) as r:
+            avatar = case.dir / "work" / f"gravatar_{h[:8]}.jpg"
+            avatar.parent.mkdir(exist_ok=True)
+            avatar.write_bytes(r.read())
+            imgs.append((avatar, f"Gravatar avatar for {email} — compare with the face in the photo"))
+    except Exception:
+        pass
+    return ToolOut(json.dumps({"email": email, "name": entry.get("displayName") or entry.get("name"),
+                               "about": entry.get("aboutMe"), "location": entry.get("currentLocation"),
+                               "urls": [u.get("value") for u in (entry.get("urls") or [])]},
+                              ensure_ascii=False, indent=1), imgs)

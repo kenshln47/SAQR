@@ -148,8 +148,17 @@ class NotAnImage(ValueError):
     pass
 
 
+def _blank_png(w: int = 720, h: int = 460) -> bytes:
+    """Stand-in image for a text-only case (person search by email / phone / name)."""
+    buf = io.BytesIO()
+    Image.new("RGB", (w, h), (13, 19, 27)).save(buf, "PNG")
+    return buf.getvalue()
+
+
 def create(upload_name: str, data: bytes, mode: str, **extra) -> Case:
     """New case from uploaded bytes. Only real images are kept, saved under the extension of their actual format."""
+    if not data:
+        data = _blank_png()
     try:
         im = Image.open(io.BytesIO(data))
         fmt = im.format

@@ -17,6 +17,9 @@ def _dms(v: float, pos: str, neg: str) -> str:
     return f"{d}°{m:02d}'{s:04.1f}\"{h}"
 
 
+import json
+
+
 def write_report(case: Case) -> None:
     d = case.load()
     f = d.get("final") or {}
@@ -27,7 +30,7 @@ def write_report(case: Case) -> None:
     if d.get("error"):
         lines.append(f"- Error: {d['error']}")
     lines.append("")
-    if d.get("mode") in ("region", "street") and f:
+    if d.get("mode") in ("region", "street", "private") and f:
         lat, lon = f.get("lat", 0), f.get("lon", 0)
         place = " / ".join(x for x in (f.get("country"), f.get("region"), f.get("city")) if x)
         lines += [f"## **{place}**", "",
@@ -40,8 +43,35 @@ def write_report(case: Case) -> None:
             lines += [f"- {a.get('place')}: {a.get('why')}" for a in f["alternatives"]]
         if f.get("unverified"):
             lines += ["", "### Not verified"] + [f"- {u}" for u in f["unverified"]]
+    elif d.get("mode") == "person" and f:
+        lines += [f"## {f.get('name') or 'ما تحدد شخص'}", "",
+                  f"- الثقة: {f.get('confidence')} · دور: {f.get('role') or '—'}"]
+        if f.get("place"):
+            lines.append(f"- المكان: {f['place']}")
+        lines += ["", f.get("summary", "")]
+        if f.get("accounts"):
+            lines += ["", "### حسابات", "", "| موقع | حساب | لماذا |", "|---|---|---|"] + \
+                     [f"| {a.get('site', '')} | {a.get('handle', '')} | {a.get('why', '')} |" for a in f["accounts"]]
+        if f.get("evidence"):
+            lines += ["", "### الأدلة"] + [f"- {x}" for x in f["evidence"]]
+        if f.get("unverified"):
+            lines += ["", "### ما تحقق منه"] + [f"- {x}" for x in f["unverified"]]
+    elif d.get("mode") == "plate" and f:
+        lines += [f"## {f.get('plate') or 'لوحة غير مقروءة'}", "",
+                  f"- الدولة: {f.get('country')} · النوع: {f.get('plate_type') or '—'}",
+                  f"- المركبة: {f.get('vehicle')}",
+                  f"- المالك: {f.get('owner') or 'غير متاح علناً'}", f"- الثقة: {f.get('confidence')}"]
+        if f.get("region_hint"):
+            lines.append(f"- دلالة الموقع: {f['region_hint']}")
+        if f.get("owner_note"):
+            lines.append(f"- عن المالك: {f['owner_note']}")
+        lines += ["", f.get("summary", "")]
+        if f.get("evidence"):
+            lines += ["", "### الأدلة"] + [f"- {x}" for x in f["evidence"]]
+        if f.get("unverified"):
+            lines += ["", "### ما تحقق منه"] + [f"- {x}" for x in f["unverified"]]
     elif f:
-        lines += ["## Result", "", "```json", __import__("json").dumps(f, ensure_ascii=False, indent=1), "```"]
+        lines += ["## Result", "", "```json", json.dumps(f, ensure_ascii=False, indent=1), "```"]
     cands = d.get("candidates", [])
     if cands:
         lines += ["", "## Candidates on the map", "", "| # | Place | lat, lon | conf | radius km | why |", "|---|---|---|---|---|---|"]

@@ -26,7 +26,7 @@ load_dotenv()
 app = FastAPI(title="SAQR")
 # DNS rebinding: a website that re-points its name to 127.0.0.1 still sends its own Host header, so refuse it
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost"])
-MODES = {"region", "street", "verify", "car"}
+MODES = {"region", "street", "private", "verify", "car", "person", "plate"}
 MAX_UPLOAD = 40 * 1024 * 1024
 BOARD = CASES_DIR / "saqr_board.json"
 PIN_KINDS = {"place", "camera", "note"}
@@ -49,8 +49,10 @@ cases.recover_stale()   # nothing can still be running when the server starts
 def _start(case: cases.Case, mode: str) -> None:
     from .agent import run_geolocate
     from .analysis import run_car, run_verify
+    from .identify import run_person, run_plate
     target = {"region": lambda: run_geolocate(case, "region"), "street": lambda: run_geolocate(case, "street"),
-              "verify": lambda: run_verify(case), "car": lambda: run_car(case)}[mode]
+              "private": lambda: run_geolocate(case, "private"), "verify": lambda: run_verify(case),
+              "car": lambda: run_car(case), "person": lambda: run_person(case), "plate": lambda: run_plate(case)}[mode]
     threading.Thread(target=target, daemon=True, name=f"case-{case.id}").start()
 
 
@@ -187,11 +189,17 @@ def _new(name: str, data: bytes, mode: str, **extra) -> dict:
 
 
 @app.post("/api/cases")
-async def new_case(request: Request, photo: UploadFile = File(...), mode: str = Form("region"), rev: bool = Form(True)):
+async def new_case(request: Request, photo: UploadFile | None = File(None), mode: str = Form("region"),
+                   rev: bool = Form(True), query: str = Form("")):
     _local_origin(request)
     if mode not in MODES:
         raise HTTPException(400, "unknown mode")
-    return _new(photo.filename or "photo.jpg", await _read_limited(photo), mode, rev=bool(rev))
+    q = query.strip()[:200]
+    data = await _read_limited(photo) if (photo is not None and photo.filename) else b""
+    if not data and not (mode == "person" and q):
+        raise HTTPException(400, "ارفع صورة، أو اكتب إيميل أو جوال أو اسم")
+    return _new((photo.filename if data else q) or "photo.jpg", data, mode,
+                rev=bool(rev), query=q, text_only=not data)
 
 
 def _case(cid: str) -> cases.Case:
@@ -209,7 +217,8 @@ def rerun_case(cid: str, request: Request, body: dict = Body(default={})):
     d = old.load()
     mode = body.get("mode") or d.get("mode", "region")
     return _new(d.get("filename") or old.photo.name, old.photo.read_bytes(), mode,
-                rev=bool(body.get("rev", d.get("rev", True))), rerun_of=old.id)
+                rev=bool(body.get("rev", d.get("rev", True))), rerun_of=old.id,
+                query=d.get("query", ""), text_only=bool(d.get("text_only")))
 
 
 @app.post("/api/cases/{cid}/cancel")

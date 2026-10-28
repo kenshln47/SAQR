@@ -48,10 +48,30 @@ Limits you must keep
 - Public places, landscapes, news events, game screenshots and the user's own photos are fine to pin precisely.
 """
 
+PRIVATE_NOTE = """
+
+Private-place mode (this run)
+The "stop at city level" rule above is relaxed here. Start from the city, then climb only as far as the evidence:
+1. Text first: a shop sign next door, a street name plate, a building number, a delivery sticker, a mail envelope,
+   a school badge or gate sign. Every one of them is a search in the local language.
+2. Architecture plus a mapped footprint (satellite, OSM building outlines) for a detached house or a school block.
+3. Interiors: the view out of the window, the skyline, the neighbourhood layout, finishes and furniture.
+4. Reverse search and listing_search: an Airbnb, aqar.fm, Bayut or Haraj listing often carries the same photo,
+   the same window view and the address.
+Pin the building and set level="point" only when a listing or a text anchor ties that building to the photo.
+Otherwise file the best district and say plainly in the summary why the building could not be pinned.
+A school: geocode and osm_query (amenity=school) inside the city, then match badge, uniform, gate, fence and colours.
+A routine photo ("where does this person go every day"): name the place and, when it fits, the exact branch.
+The family car's plate number may be read and searched here as an extra anchor; do not lean on it alone.
+Never invent a building. An honest district beats a confident wrong door.
+"""
+
 MODE_HINT = {
     "region": "Mode: FIND REGION (quick). Aim for country, region and city with an honest radius. Use at most ~12 tool calls.",
     "street": ("Mode: FIND STREET (deep). Push to the street or camera point when the evidence allows: narrow, then "
                "street-level checks, sweeps, terrain and satellite evidence. Stop when one strong constraint is confirmed, or two weaker ones agree. If neither holds, still file the best city or district with a wider radius."),
+    "private": ("Mode: PRIVATE PLACE (بيت · مدرسة · شغل · روتين). The subject is a private home, a school or ordinary "
+                "people, so push past the city when the evidence allows. Same tools, deeper ladder."),
 }
 
 NUM = {"type": "number"}
@@ -80,6 +100,9 @@ TOOLS = [
                       "required": ["query"], "additionalProperties": False}},
     {"name": "osm_query", "description": "Run an Overpass QL query against OpenStreetMap (roads, landmarks, power lines…). Use [out:json] and out center.",
      "input_schema": {"type": "object", "properties": {"overpass_ql": {"type": "string"}}, "required": ["overpass_ql"], "additionalProperties": False}},
+    {"name": "listing_search", "description": "Search rental/property listings (Airbnb, aqar.fm, Bayut, Haraj) for text or features seen in the photo, to match an interior or a facade to a listing.",
+     "input_schema": {"type": "object", "properties": {"query": {"type": "string"}, "sites": {"type": "string", "description": "comma-separated domains; omit for the defaults"}},
+                      "required": ["query"], "additionalProperties": False}},
     {"name": "pin_candidate", "description": "Put a candidate location on the user's map with your confidence and why.",
      "input_schema": {"type": "object", "properties": {"lat": NUM, "lon": NUM, "label": {"type": "string"},
                       "confidence": {"type": "number", "description": "0-1"}, "radius_km": NUM, "reason": {"type": "string"}},
@@ -190,6 +213,8 @@ def _run_tool(case: Case, name: str, inp: dict) -> T.ToolOut:
         return T.geocode(inp["query"], inp.get("country_code", ""))
     if name == "osm_query":
         return T.osm_query(inp["overpass_ql"])
+    if name == "listing_search":
+        return T.listing_search(inp["query"], inp.get("sites", ""))
     if name == "pin_candidate":
         case.add_candidate({k: inp[k] for k in ("lat", "lon", "label", "confidence", "radius_km", "reason")})
         return T.ToolOut("pinned")
@@ -350,6 +375,7 @@ def _stream_with_retry(client, **kw):
 def _agent_loop(case: Case, mode: str, recon_md: str) -> None:
     client = anthropic.Anthropic()
     model = model_name()   # fixed for the whole run, even if Settings change meanwhile
+    system = PRIVATE_NOTE if mode == "private" else SYSTEM
     messages: list[dict] = [{"role": "user", "content": [
         T.image_block(case.photo), {"type": "text", "text": _intro(case, mode, recon_md)}]}]
     nudged = False
@@ -359,7 +385,7 @@ def _agent_loop(case: Case, mode: str, recon_md: str) -> None:
         case.emit("progress", turn=turn + 1, max=MAX_TURNS)
         _prune_images(messages[1:])
         msg = _stream_with_retry(
-            client, model=model, max_tokens=64000, system=SYSTEM, tools=TOOLS + SERVER_TOOLS, messages=messages,
+            client, model=model, max_tokens=64000, system=system, tools=TOOLS + SERVER_TOOLS, messages=messages,
             thinking={"type": "adaptive", "display": "summarized"}, output_config={"effort": EFFORT},
             cache_control={"type": "ephemeral"},
             betas=["server-side-fallback-2026-07-01"], fallbacks="default",
@@ -418,8 +444,9 @@ def _agent_loop_openrouter(case: Case, mode: str, recon_md: str) -> None:
     follow in one user message after the tool results."""
     model = model_name()
     tools = OR.function_tools(TOOLS) + [WEB_SEARCH_OR]
+    system = PRIVATE_NOTE if mode == "private" else SYSTEM
     messages: list[dict] = [
-        {"role": "system", "content": SYSTEM},
+        {"role": "system", "content": system},
         {"role": "user", "content": [
             OR.image_part(T.image_block(case.photo)), {"type": "text", "text": _intro(case, mode, recon_md)}]},
     ]
