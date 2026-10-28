@@ -236,10 +236,14 @@ def create(upload_name: str, data: bytes, mode: str, **extra) -> Case:
 
 
 def get(cid: str) -> Case | None:
-    if not re.fullmatch(r"[\w.-]+", cid):
+    """One folder inside CASES_DIR. `.` and `..` are not ids, and a symlink cannot leave the directory."""
+    if not cid or cid in {".", ".."} or not re.fullmatch(r"(?!\.)[\w.-]+", cid):
         return None
-    folder = CASES_DIR / cid
-    return Case(folder) if (folder / "case.json").exists() else None
+    root = CASES_DIR.resolve()
+    folder = (CASES_DIR / cid).resolve()
+    if folder == root or root not in folder.parents:
+        return None
+    return Case(folder) if (folder / "case.json").is_file() else None
 
 
 def all_cases() -> list[dict]:

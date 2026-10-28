@@ -1263,7 +1263,7 @@ function init() {
   });
 
   const fromHash = () => {
-    const m = location.hash.match(/case=([\w.-]+)/);
+    const m = location.hash.match(/case=([A-Za-z0-9][\w.-]*)/);
     if (m && m[1] !== state.active) openCase(m[1]);
     const v = location.hash.match(/view=(-?[\d.]+),(-?[\d.]+),([\d.]+)(?:,([\d.]+))?/);
     if (v) map.jumpTo({ center: [+v[2], +v[1]], zoom: +v[3], pitch: +(v[4] || 0), bearing: v[4] ? -20 : 0 });
