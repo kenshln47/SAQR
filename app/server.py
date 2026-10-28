@@ -42,7 +42,18 @@ async def no_stale_ui(request: Request, call_next):
     return resp
 
 
-cases.recover_stale()   # nothing can still be running when the server starts
+def bind_loopback(port: int):
+    """Bind 127.0.0.1. If the port is taken, exit before any case is rewritten."""
+    import socket
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    try:
+        sock.bind(("127.0.0.1", port))
+    except OSError as e:
+        sock.close()
+        raise SystemExit(f"127.0.0.1:{port} is already in use ({e}). Not marking running cases as failed.")
+    sock.listen(2048)
+    return sock
 
 
 def _start(case: cases.Case, mode: str) -> None:
@@ -415,8 +426,15 @@ app.mount("/", StaticFiles(directory=WEB_DIR, html=True), name="web")
 
 
 def main() -> None:
+    """Own the port first, then create the cases directory and fail only the runs this process interrupted."""
     import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=int(os.environ.get("SAQR_PORT") or 8765), log_level="warning")
+    from .config import ensure_cases_dir
+    port = int(os.environ.get("SAQR_PORT") or 8765)
+    sock = bind_loopback(port)
+    ensure_cases_dir()
+    cases.recover_stale()
+    config = uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning")
+    uvicorn.Server(config).run(sockets=[sock])
 
 
 if __name__ == "__main__":
