@@ -71,7 +71,9 @@ What breaks: a licence fix shipped as a silent accuracy regression. Trigger: any
 
 Fix: measure prior-off vs GeoCLIP-only vs StreetCLIP+GeoCLIP in phase 2. If the gap is material, buy a StreetCLIP licence or call `prior.py --models geoclip` and keep StreetCLIP out. Do not leave the full skip in place once that measurement exists.
 
-Effort: M. Verify: a bench score with the three prediction files, and a commercial argv that still requests GeoCLIP.
+The commercial follow-up is now `prior.py --models geoclip` after `--skip calib,prior` (`app/licensing.py` `prior_followup_args`, `app/tools.py` `recon`). StreetCLIP still loads only when `SAQR_ALLOW_NC_MODELS=1`. That is the permissive swap, not a measurement. No SAQR corpus has been scored, so this finding stays open. Commons geosearch on 2026-10-28 returned `cirrussearch-too-busy-error`. `bench.py make-streetview` is not an acceptable corpus.
+
+Effort: M. Verify: a bench score with the three prediction files, and a commercial argv that still requests GeoCLIP. The argv check is in `tests/test_recon_followup.py`. The score file does not exist yet.
 
 
 ### [B-PRIV-01] BLOCKER — shipped modules contradict the published limits and identify private people

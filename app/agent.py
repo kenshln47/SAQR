@@ -234,6 +234,16 @@ def _tool_result(case: Case, block, out: T.ToolOut) -> dict:
     return {"type": "tool_result", "tool_use_id": block.id, "content": content, "is_error": out.is_error}
 
 
+def _prior_label(pj: dict) -> str:
+    models = set(pj.get("models") or [])
+    names = []
+    if "geoclip" in models:
+        names.append("GeoCLIP")
+    if "streetclip" in models:
+        names.append("StreetCLIP")
+    return " و ".join(names) if names else "النماذج المحلية"
+
+
 def _prior_candidates(case: Case) -> None:
     """Put the model's ranking on the map so the user sees something even before (or without) Claude."""
     pj = T.prior_json(case)
@@ -246,7 +256,7 @@ def _prior_candidates(case: Case) -> None:
     if "lat" in bg:
         case.add_candidate({"lat": bg["lat"], "lon": bg["lon"], "label": f"تخمين النماذج · {bg.get('near', '')}",
                             "confidence": round(float((pj.get("assessment") or {}).get("top_p", 0.2)), 2),
-                            "radius_km": 300, "reason": "ترتيب GeoCLIP و StreetCLIP (منطقة بداية، متوسط الخطأ ~270 كم)",
+                            "radius_km": 300, "reason": f"ترتيب {_prior_label(pj)} (منطقة بداية، مو قياس صقر)",
                             "source": "model"})
 
 
@@ -258,7 +268,7 @@ def _local_clues(case: Case, pj: dict) -> list[str]:
         out.append(f"توقع النماذج المحلية للدولة: {top}")
     bg = pj.get("best_guess") or {}
     if "lat" in bg:
-        out.append(f"أقوى تجمع في GeoCLIP قرب {bg.get('near', '?')} ({bg['lat']:.2f}, {bg['lon']:.2f}) · متوسط خطأ هالنماذج ~270 كم")
+        out.append(f"أقوى تجمع في GeoCLIP قرب {bg.get('near', '?')} ({bg['lat']:.2f}, {bg['lon']:.2f})")
     if (pj.get("assessment") or {}).get("informative") is False:
         out.append("الصورة فقيرة بالتفاصيل، فالتخمين ضعيف حتى على مستوى الدولة")
     work = case.dir / "work" / "recon"
@@ -313,13 +323,15 @@ def run_geolocate(case: Case, mode: str) -> None:
             top = (pj.get("combined") or [{}])[0]
             if "lat" not in bg or not top.get("name"):
                 return finish(case, "error", "",
-                              "الفحص المحلي ما رجع تخمين موقع. توقع الدولة (StreetCLIP) غير تجاري ومطفأ "
-                              "إلا إذا ضبطت SAQR_ALLOW_NC_MODELS=1 على جهاز شخصي. "
-                              "أضف مفتاح من الإعدادات للتحليل الكامل، أو شوف السجل.")
+                              "الفحص المحلي ما رجع تخمين موقع. المسار التجاري يطلب GeoCLIP بعد تخطي StreetCLIP، "
+                              "وما انكتب prior.json. أضف مفتاح من الإعدادات للتحليل الكامل، أو شوف السجل. "
+                              "StreetCLIP يشتغل فقط مع SAQR_ALLOW_NC_MODELS=1 على جهاز شخصي غير تجاري.")
+            who = _prior_label(pj)
             final = {"country": top["name"], "region": "", "city": bg.get("near", ""),
                      "lat": bg["lat"], "lon": bg["lon"], "radius_km": 300, "level": "country",
                      "confidence": "low",
-                     "summary": "وضع محلي بدون ذكاء اصطناعي: هذا تخمين نماذج التعرف المحلية فقط (GeoCLIP + StreetCLIP). "
+                     "summary": f"وضع محلي بدون ذكاء اصطناعي: هذا تخمين {who} فقط. "
+                                "StreetCLIP غير تجاري وما يشتغل إلا مع SAQR_ALLOW_NC_MODELS=1. "
                                 "أضف مفتاح OpenRouter أو Anthropic من الإعدادات عشان يشتغل التحليل الكامل والتحقق.",
                      "clues": _local_clues(case, pj), "alternatives": [],
                      "unverified": ["ما فيه خطوة تفكير وتحقق: هذا ترتيب النماذج بس، والنقطة على الخريطة منطقة بداية مو جواب"]}

@@ -24,7 +24,7 @@ from PIL import Image, ImageOps
 
 from .cases import Case   # importing cases registers the HEIC opener
 from .config import SCRIPTS, SECRET_ENV, UV, VENV_PY
-from .licensing import normalise_pano, pano_block_reason, recon_skip_arg, satellite_block_reason
+from .licensing import normalise_pano, pano_block_reason, prior_followup_args, recon_skip_arg, satellite_block_reason
 
 SAT_SOURCE = re.compile(r"(esri|google|google-hybrid|bing|wayback:\d{4}(-\d{2}){0,2})")
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) SAQR/1.0 (+local)"
@@ -83,15 +83,28 @@ def recon(case: Case) -> ToolOut:
     if not case.load().get("rev", True):
         args.append("--no-rev")
     rc, out = run_script(case, "recon.py", args, use_uv=True, timeout=1800)
+    # recon.py --skip cannot drop StreetCLIP and keep GeoCLIP. Call GeoCLIP alone.
+    follow = prior_followup_args(str(case.photo))
+    follow_note = ""
+    if follow:
+        frc, fout = run_script(case, "prior.py", follow, use_uv=True, timeout=1800)
+        if frc != 0:
+            follow_note = f"\n\nGeoCLIP prior failed (rc={frc}): {_tail(fout)}"
+            rc = rc or frc
+            out = (out + "\n" + fout).strip()
     md = case.dir / "work" / "recon" / "recon.md"
     text = md.read_text(encoding="utf-8") if md.exists() else f"recon failed (rc={rc}): {_tail(out)}"
+    prior_md = case.dir / "work" / "recon" / "prior" / "prior.md"
+    if prior_md.exists():
+        text += "\n\n" + prior_md.read_text(encoding="utf-8")
+    text += follow_note
     imgs = []
     sheet = case.dir / "work" / "recon" / "detect" / "detect_sheet.jpg"
     if sheet.exists():
         imgs.append((sheet, "Detected objects (signs, poles, plates, vehicles)"))
     pmap = case.dir / "work" / "recon" / "prior" / "prior_map.png"
     if pmap.exists():
-        imgs.append((pmap, "World-prior heat map (model ranking, not proof)"))
+        imgs.append((pmap, "World-prior heat map (GeoCLIP unless the non-commercial opt-in is on)"))
     return ToolOut(text, imgs, is_error=not md.exists())
 
 

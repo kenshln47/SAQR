@@ -8,6 +8,7 @@ from app.licensing import (
     nc_models_allowed,
     normalise_pano,
     pano_block_reason,
+    prior_followup_args,
     recon_skip_arg,
     satellite_block_reason,
 )
@@ -29,6 +30,18 @@ def test_nc_opt_in(monkeypatch: pytest.MonkeyPatch, value: str) -> None:
 def test_blank_opt_in_does_not_count(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("SAQR_ALLOW_NC_MODELS", "  ")
     assert nc_models_allowed() is False
+
+
+def test_commercial_followup_is_geoclip_only(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("SAQR_ALLOW_NC_MODELS", raising=False)
+    args = prior_followup_args("/tmp/photo.jpg")
+    assert args == ["/tmp/photo.jpg", "--out-dir", "recon/prior", "--models", "geoclip"]
+    assert args is not None and "streetclip" not in args
+
+
+def test_nc_opt_in_skips_the_geoclip_followup(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("SAQR_ALLOW_NC_MODELS", "1")
+    assert prior_followup_args("/tmp/photo.jpg") is None
 
 
 def test_default_panorama_is_mapillary() -> None:

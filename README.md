@@ -37,10 +37,13 @@ with live prices from OpenRouter. Any other model that takes images and supports
 The benchmark measures the eye, not tool use; SAQR's prompts were tuned on Claude, so other models may call the
 tools less well. Web search on OpenRouter uses its `openrouter:web_search` server tool (billed by OpenRouter).
 
-Without a key SAQR runs on local metadata, OCR and object detection. The StreetCLIP world prior
-(CC-BY-NC-4.0; GeoCLIP rides in the same `prior.py` step) stays off unless `SAQR_ALLOW_NC_MODELS=1`
-on a private, non-commercial install. It is not part of a paid deployment. Reverse image search
-runs only when that option is on. Country-level guesses need either the opt-in prior or an API key.
+Without a key SAQR runs on local metadata, OCR, object detection, and a GeoCLIP world prior (MIT).
+StreetCLIP (CC-BY-NC-4.0) is not part of that path. `recon.py` is called with `--skip calib,prior`,
+then `prior.py --models geoclip` writes `work/recon/prior`. `SAQR_ALLOW_NC_MODELS=1` on a private,
+non-commercial install runs StreetCLIP and GeoCLIP together inside recon and does not add that
+follow-up call. Reverse image search is a separate switch, described below. It is not the prior.
+The StreetCLIP-versus-GeoCLIP gap has not been scored on a SAQR corpus (H-GEOCLIP-01). A local
+country guess is a starting area, not a measured accuracy.
 
 ## Modules
 
@@ -102,4 +105,5 @@ shown where OpenStreetMap has them). It is Arabic right-to-left and also works o
 
 SAQR's own code is proprietary. See `LICENSE`, `NOTICE`, and `THIRD_PARTY.md`.
 MapLibre GL JS (BSD-3-Clause) and mapbox-gl-rtl-text (BSD-2-Clause, plus the ICU notice) are vendored in `web/vendor/`.
-The GeoInt scripts are MIT and are not in this repository. StreetCLIP weights are not included; they are CC-BY-NC-4.0.
+The GeoInt scripts are MIT and are not in this repository. A commercial run calls GeoInt `prior.py --models geoclip` only.
+StreetCLIP weights are not included; they are CC-BY-NC-4.0 and load only when `SAQR_ALLOW_NC_MODELS=1`.

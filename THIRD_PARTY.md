@@ -8,8 +8,8 @@ SAQR's own code is proprietary (see LICENSE). Everything below is someone else's
 | mapbox-gl-js ≤ 1.13, embedded in MapLibre | same licence file | BSD-3-Clause | Same duty. |
 | mapbox-gl-rtl-text (introducing commit names 0.2.3) | `web/vendor/mapbox-gl-rtl-text.js` | BSD-2-Clause plus the ICU notice, both in `web/vendor/mapbox-gl-rtl-text.LICENSE.md` | Allowed. Keep both notices. |
 | [GeoInt](https://github.com/marouane53/GeoInt) scripts | not in this repo; default path `%USERPROFILE%\.claude\skills\geoint` | MIT | The scripts may be shipped. Weights they download may not. |
-| StreetCLIP `geolocal/StreetCLIP` | downloaded by GeoInt `prior.py`, not in this repo | CC-BY-NC-4.0 | Not allowed in a paid or public SAQR. The model card also marks private-image geolocation as out of scope. Default `recon.py` invocation passes `--skip calib,prior` so the weights are not loaded. `SAQR_ALLOW_NC_MODELS=1` is the private opt-in. |
-| GeoCLIP | same `prior.py` step | MIT (weights and gallery noted by GeoInt `references/models.md`) | The step cannot be split from StreetCLIP, so a commercial build skips the whole prior. |
+| StreetCLIP `geolocal/StreetCLIP` | downloaded by GeoInt `prior.py`, not in this repo | CC-BY-NC-4.0 | Not allowed in a paid or public SAQR. The model card also marks private-image geolocation as out of scope. Default `recon.py` passes `--skip calib,prior`, so this weight is not loaded. `SAQR_ALLOW_NC_MODELS=1` is the private opt-in, and that path runs StreetCLIP inside recon. |
+| GeoCLIP | GeoInt `prior.py --models geoclip` on the commercial path; both models when the opt-in is set | MIT (weights and gallery noted by GeoInt `references/models.md`) | Allowed. The commercial follow-up does not pass `streetclip`. The accuracy gap versus StreetCLIP is unmeasured (H-GEOCLIP-01). |
 | OWLv2 | GeoInt `detect.py` | Apache-2.0 | Allowed. |
 | GeoCalib | GeoInt `calib.py` | Apache-2.0 | Allowed. SAQR already passes `--skip calib`. |
 | MegaLoc `gberton/MegaLoc` | GeoInt `sweep.py` | MIT | Allowed. Still only as good as the panorama source it ranks. |
