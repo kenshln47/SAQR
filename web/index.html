@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>SAQR · صقر</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23071017'/%3E%3Cpath d='M16 5 27 16 16 27 5 16Z' fill='none' stroke='%233de7ff' stroke-width='2.4'/%3E%3Ccircle cx='16' cy='16' r='3.2' fill='%233de7ff'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="vendor/maplibre-gl.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="map" dir="ltr"></div>
+<div class="vignette"></div>
+<div class="scan"></div>
+
+<!-- icon rail -->
+<nav class="rail">
+  <div class="logo" title="SAQR · صقر" data-i="logo"></div>
+  <button class="ri active" data-panel="sources" title="المصادر" data-i="folder"></button>
+  <button class="ri" data-panel="search" title="بحث عن مكان" data-i="search"></button>
+  <button class="ri" data-panel="activity" title="النشاط" data-i="clock"></button>
+  <div class="grow"></div>
+  <button class="ri" id="helpBtn" title="كيف يشتغل" data-i="help"></button>
+  <div class="me mono" id="engineDot" title=""></div>
+</nav>
+
+<!-- top bar -->
+<header class="bar">
+  <div class="seg">
+    <span class="brand" data-t="SAQR" title="SAQR · صقر">SAQR</span>
+    <button class="chip icon" id="togglePanel" title="إظهار / إخفاء اللوحة" data-i="panel"></button>
+    <button class="chip status" id="engine" title="إعدادات مفتاح API"><i></i><span>…</span></button>
+    <span class="chip plain"><span data-i="globe" class="ico"></span><b>تحقيق مفتوح</b><span class="dim mono" id="caseCount"></span></span>
+  </div>
+  <div class="seg center">
+    <div class="drop-wrap">
+      <button class="chip" id="filterBtn" title="فلتر"><span data-i="filter" class="ico"></span>فلتر <span class="badge" id="filterN">4</span></button>
+      <div class="menu hidden" id="filterMenu">
+        <label><input type="checkbox" data-f="geo" checked> تحديد الموقع</label>
+        <label><input type="checkbox" data-f="verify" checked> التحقق من الصور</label>
+        <label><input type="checkbox" data-f="car" checked> هوية السيارة</label>
+        <label><input type="checkbox" data-f="pins" checked> دبابيس المستخدم</label>
+      </div>
+    </div>
+    <div class="drop-wrap">
+      <button class="chip" id="layersBtn" title="الطبقات"><span data-i="layers" class="ico"></span>الطبقات</button>
+      <div class="menu hidden" id="layersMenu">
+        <label><input type="radio" name="base" value="dark" checked> خريطة داكنة</label>
+        <label><input type="radio" name="base" value="sat"> قمر صناعي</label>
+        <hr>
+        <label><input type="checkbox" id="l3d" checked> مباني ثلاثية الأبعاد</label>
+        <label><input type="checkbox" id="lRadius" checked> دوائر النطاق</label>
+        <label><input type="checkbox" id="lLabels" checked> أسماء الأماكن</label>
+      </div>
+    </div>
+    <button class="chip" id="tiltBtn" title="ثلاثي الأبعاد"><span data-i="cube" class="ico"></span><span id="tiltLabel">ثلاثي الأبعاد</span></button>
+  </div>
+  <div class="seg end">
+    <span class="chip plain mono clock" id="clock" title="UTC"></span>
+    <button class="chip wide-only" id="boardBtn" disabled><span data-i="board" class="ico"></span>الأدلة</button>
+    <button class="chip wide-only" id="intelBtn" disabled><span data-i="intel" class="ico"></span>التحليل</button>
+    <a class="chip wide-only" id="reportBtn" target="_blank" aria-disabled="true"><span data-i="note" class="ico"></span>التقرير</a>
+    <button class="chip icon" id="settingsBtn" title="الإعدادات" data-i="gear"></button>
+    <button class="chip primary" id="newBtn" title="صورة جديدة"><span data-i="plus" class="ico"></span><span class="lbl">صورة جديدة</span></button>
+  </div>
+</header>
+
+<!-- sources panel -->
+<aside class="panel side" id="sidePanel">
+  <div class="ptabs">
+    <button class="pt active" data-pt="sources">المصادر</button>
+    <button class="pt" data-pt="notes">الملاحظات</button>
+    <button class="pt" data-pt="activity">النشاط</button>
+    <button class="pclose" id="closeSide" title="إغلاق" data-i="x"></button>
+  </div>
+  <div class="pbody" data-pb="sources">
+    <div class="searchbox"><span data-i="search"></span><input id="srcSearch" placeholder="ابحث في المصادر…"></div>
+    <div class="count dim" id="srcCount">0 مصادر</div>
+    <div id="groups" class="groups"></div>
+    <button class="add" id="addBtn"><span data-i="plus"></span>إضافة مصدر…</button>
+  </div>
+  <div class="pbody hidden" data-pb="notes">
+    <textarea id="notes" maxlength="20000" placeholder="ملاحظات عامة للتحقيق… (تنحفظ تلقائياً)"></textarea>
+    <div class="dim small" id="notesState"></div>
+  </div>
+  <div class="pbody hidden" data-pb="activity"><div id="activity" class="activity"></div></div>
+  <div class="pbody hidden" data-pb="search">
+    <div class="searchbox"><span data-i="search"></span><input id="placeSearch" placeholder="اسم مكان أو إحداثيات: 24.71, 46.67"></div>
+    <div id="placeResults" class="results"></div>
+  </div>
+</aside>
+
+<!-- intel panel -->
+<aside class="panel intel hidden" id="intel">
+  <div class="ihead">
+    <img id="iThumb" alt="">
+    <div class="it">
+      <b id="iName">—</b>
+      <small class="dim"><span id="iMode"></span> · <span class="mono" id="iTime"></span></small>
+      <small class="dim mono" id="iEngine"></small>
+    </div>
+    <div class="ihead-acts">
+      <button class="pclose stop hidden" id="iStop" title="أوقف التحليل" data-i="stop"></button>
+      <div class="drop-wrap">
+        <button class="pclose hidden" id="iRerun" title="أعد التحليل" data-i="redo"></button>
+        <div class="menu rerun hidden" id="rerunMenu">
+          <div class="mh">أعد تحليل نفس الصورة</div>
+          <button data-mode="region"><span data-i="globe"></span>تحديد المنطقة</button>
+          <button data-mode="street"><span data-i="pin"></span>تحديد الشارع</button>
+          <button data-mode="verify"><span data-i="shield"></span>التحقق من الصورة</button>
+          <button data-mode="car"><span data-i="car"></span>هوية السيارة</button>
+          <label class="ropt" title="يرسل الصورة لـ Yandex و Baidu (لتحديد المنطقة والشارع بس)"><input type="checkbox" id="rerunRev"> بحث عكسي أونلاين</label>
+          <small class="dim" id="rerunEng"></small>
+        </div>
+      </div>
+      <a class="pclose hidden" id="iReport" target="_blank" title="افتح التقرير" data-i="note"></a>
+      <button class="pclose" id="closeIntel" title="إغلاق" data-i="x"></button>
+    </div>
+  </div>
+  <div class="stages" id="stages">
+    <div class="stage" data-s="recon"><i></i>فحص أولي</div>
+    <div class="stage" data-s="analysis"><i></i>تحليل وتحقق</div>
+    <div class="stage" data-s="done"><i></i>التقرير</div>
+  </div>
+  <div class="turns hidden" id="turns"><div class="tbar"><i id="turnFill"></i></div><span class="mono" id="turnTxt"></span></div>
+  <div class="ptabs small">
+    <button class="it-tab active" data-it="result">النتيجة</button>
+    <button class="it-tab" data-it="feed">مباشر <span class="badge" id="feedN">0</span></button>
+    <button class="it-tab" data-it="evidence">الأدلة <span class="badge" id="evN">0</span></button>
+    <button class="it-tab" data-it="notes">ملاحظات</button>
+  </div>
+  <div class="ibody" data-ib="result"><div id="result" class="result"><p class="dim">التحليل شغال… النتيجة تطلع هنا.</p></div></div>
+  <div class="ibody hidden" data-ib="feed"><div id="feed" class="feed"></div></div>
+  <div class="ibody hidden" data-ib="evidence"><div id="evidence" class="evidence"></div></div>
+  <div class="ibody notes hidden" data-ib="notes">
+    <textarea id="caseNotes" maxlength="20000" placeholder="ملاحظاتك عن هذي القضية… تنحفظ في مجلدها وتدخل التقرير"></textarea>
+    <div class="dim small" id="caseNotesState"></div>
+  </div>
+</aside>
+
+<!-- map tools -->
+<div class="tools">
+  <button class="tl active" data-tool="select" title="تحديد وتحريك" data-i="cursor"></button>
+  <button class="tl" data-tool="pin" title="ضع دبوس" data-i="pin"></button>
+  <button class="tl" data-tool="measure" title="قياس المسافة" data-i="measure"></button>
+  <button class="tl" id="clearBtn" title="مسح" data-i="trash"></button>
+  <div class="menu clearmenu hidden" id="clearMenu">
+    <button id="clearMeasure"><span data-i="measure"></span><span>مسح خطوط القياس</span><b id="mCount">0</b></button>
+    <button id="clearPins" class="danger"><span data-i="pin"></span><span id="clearPinsLabel">حذف كل الدبابيس</span><b id="pCount">0</b></button>
+  </div>
+</div>
+<div class="tools bottom">
+  <button class="tl" id="compass" title="اتجاه الشمال" data-i="compass"></button>
+  <div class="zoom"><button class="tl" id="zin" title="تكبير" data-i="plus"></button><button class="tl" id="zout" title="تصغير" data-i="minus"></button></div>
+  <button class="tl" id="baseToggle" title="قمر صناعي / داكنة" data-i="map"></button>
+</div>
+<div class="coordbar mono" id="coordbar">—</div>
+<div class="maperr hidden" id="mapErr"></div>
+
+<!-- empty state -->
+<div class="welcome hidden" id="welcome">
+  <button class="wdrop" id="wdrop">
+    <span data-i="upload" class="big"></span>
+    <span class="wt"><b>ارفع صورة عشان تبدأ</b><small>اضغط هنا · أو اسحب الصورة لأي مكان في الصفحة · أو الصقها بـ Ctrl+V</small></span>
+  </button>
+  <div class="wsteps"><span><i>01</i>ارفع الصورة</span><span><i>02</i>اختر نوع التحليل</span><span><i>03</i>تابع النتيجة والأدلة على الخريطة</span></div>
+  <div class="wwarn hidden" id="wwarn"></div>
+  <div class="wkey" id="wkey"></div>
+</div>
+<div class="dragover hidden" id="dragOverlay"><div><span data-i="upload" class="big"></span><b>أفلت الصورة هنا</b></div></div>
+<div class="hint hidden" id="hint"></div>
+<div class="toast hidden" id="toast" role="status"></div>
+
+<!-- add source -->
+<div class="modal hidden" id="addModal">
+  <div class="mcard">
+    <div class="mhead"><b>إضافة مصدر</b><button class="pclose" id="closeAdd" title="إغلاق" data-i="x"></button></div>
+    <div id="drop" class="drop">
+      <input id="file" type="file" accept="image/*,.heic,.heif" hidden>
+      <div class="drop-empty"><span data-i="upload" class="big"></span><p>اسحب صورة هنا، الصقها، أو <u>اختر ملف</u></p>
+        <small class="mono">JPG · PNG · WEBP · HEIC · TIFF</small></div>
+      <img id="preview" alt="">
+      <div class="drop-file mono" id="dropFile"></div>
+    </div>
+    <div class="dropmsg hidden" id="dropMsg"></div>
+    <div class="modes">
+      <button class="mode active" data-mode="region"><span data-i="globe"></span><b>تحديد المنطقة</b><small>دولة · مدينة · نطاق</small></button>
+      <button class="mode" data-mode="street"><span data-i="pin"></span><b>تحديد الشارع</b><small>تحليل عميق · Street View</small></button>
+      <button class="mode" data-mode="verify"><span data-i="shield"></span><b>التحقق من الصورة</b><small>تعديل · توليد بالذكاء</small></button>
+      <button class="mode" data-mode="car"><span data-i="car"></span><b>هوية السيارة</b><small>الماركة · الموديل · السنة</small></button>
+    </div>
+    <label class="opt" id="revRow"><input type="checkbox" id="revOpt" checked>
+      <span><b>بحث عكسي أونلاين</b><small>يرسل الصورة لـ Yandex و Baidu عشان يلقى نسخ منها. شيل العلامة لو الصورة حساسة.</small></span></label>
+    <div class="modehint hidden" id="modeHint">بدون مفتاح API يشتغل بالنماذج المحلية بس (دولة/منطقة تقريبية). <button class="link" data-open-settings>أضف المفتاح</button></div>
+    <div class="runmsg hidden" id="runMsg" role="alert"></div>
+    <button id="run" class="run" disabled><span id="runLabel">اختر صورة</span></button>
+  </div>
+</div>
+
+<!-- settings -->
+<div class="modal hidden" id="setModal">
+  <div class="mcard narrow">
+    <div class="mhead"><b>الإعدادات · محرك الذكاء الاصطناعي</b><button class="pclose" data-close="setModal" title="إغلاق" data-i="x"></button></div>
+    <div class="keystate" id="keyState"></div>
+    <div class="provs" id="provSeg">
+      <button data-prov="openrouter"><b>OpenRouter</b><small>كل النماذج بمفتاح واحد</small></button>
+      <button data-prov="anthropic"><b>Anthropic</b><small>Claude مباشرة</small></button>
+    </div>
+    <div id="provOR">
+      <ol class="ksteps">
+        <li>افتح <span class="mono">openrouter.ai/keys</span> وسجّل دخول، وأضف رصيد من <b>Credits</b></li>
+        <li>اضغط <b>Create Key</b> وانسخ المفتاح كامل (يبدأ بـ <span class="mono">sk-or-</span>)</li>
+        <li>اختر النموذج تحت، الصق المفتاح واضغط <b>حفظ وتحقق</b></li>
+      </ol>
+      <div class="mlist-head"><b>النموذج</b><span class="dim" id="modelSrc"></span></div>
+      <div class="mlist" id="modelList"><div class="dim small">جاري تحميل النماذج…</div></div>
+      <input id="modelCustom" class="field" list="modelAll" placeholder="أو اكتب معرّف نموذج ثاني: lab/model" autocomplete="off" spellcheck="false" dir="ltr">
+      <datalist id="modelAll"></datalist>
+    </div>
+    <div id="provAN" class="hidden">
+      <ol class="ksteps">
+        <li>افتح <span class="mono">console.anthropic.com</span> وسجّل دخول (وأضف رصيد من Billing)</li>
+        <li>من <b>API Keys</b> اضغط <b>Create Key</b> وانسخ المفتاح كامل (يبدأ بـ <span class="mono">sk-ant-</span>)</li>
+        <li>الصقه هنا واضغط <b>حفظ وتحقق</b>. النموذج: <span class="mono">claude-opus-5-5</span></li>
+      </ol>
+    </div>
+    <div class="keyrow">
+      <input id="keyInput" type="password" placeholder="sk-or-v1-…" autocomplete="off" spellcheck="false" dir="ltr">
+      <button id="keySave" class="run">حفظ وتحقق</button>
+    </div>
+    <div class="keymsg" id="keyMsg"></div>
+    <table class="cmp">
+      <tr><th></th><th>بدون مفتاح</th><th>مع المفتاح</th></tr>
+      <tr><td>تحديد المنطقة</td><td>تخمين النماذج المحلية (~270 كم)</td><td>تحليل كامل بأدلة</td></tr>
+      <tr><td>تحديد الشارع</td><td>نفس اللي فوق</td><td>Street View · تضاريس · قمر صناعي</td></tr>
+      <tr><td>التحقق من الصورة</td><td>بيانات الملف + ELA</td><td>+ قراءة مؤشرات التعديل والتوليد</td></tr>
+      <tr><td>هوية السيارة</td><td>ما يشتغل</td><td>الماركة · الموديل · السنة</td></tr>
+    </table>
+    <p class="dim small">كل تحليل يخصم من رصيدك عند المزود. "تحديد الشارع" أغلى لأنه يشغل أدوات أكثر. المفاتيح تنحفظ في <span class="mono">saqr\.env</span> على جهازك بس.</p>
+    <button class="link danger" id="keyRemove">حذف المفتاح من الجهاز</button>
+  </div>
+</div>
+
+<div class="modal hidden" id="helpModal">
+  <div class="mcard narrow">
+    <div class="mhead"><b>صقر · كيف يشتغل</b><button class="pclose" data-close="helpModal" title="إغلاق" data-i="x"></button></div>
+    <div class="helptext">
+      <p><b>إضافة مصدر:</b> ارفع صورة واختر نوع التحليل. كل مصدر يصير قضية في <span class="mono" id="helpDir" dir="ltr">…</span> فيها التقرير والأدلة.</p>
+      <p><b>الخريطة:</b> الدبوس الأخضر هو النتيجة النهائية، الكهرماني مرشحات، الرمادي تخمين النماذج المحلية. الدائرة = نطاق الثقة.</p>
+      <p><b>الأدوات:</b> ضع دبوس لتعليم نقطة، وأداة القياس تحسب المسافة بين النقاط. <span class="mono">Esc</span> يرجعك لأداة التحديد ويبدأ قياس جديد.</p>
+      <p><b>إيقاف وإعادة:</b> زر الإيقاف يوقف التحليل بعد الخطوة الحالية. زر الإعادة يحلل نفس الصورة من جديد بنوع ثاني أو بالنموذج اللي اخترته الحين، والقضية القديمة تبقى للمقارنة.</p>
+      <p><b>مفتاح API:</b> بدونه يشتغل بالنماذج المحلية بس (دولة/منطقة تقريبية). من الإعدادات ⚙ اختر OpenRouter (أي نموذج: Claude أو GPT أو Gemini…) أو Anthropic مباشرة، والصق مفتاحك.</p>
+      <p><b>البحث العكسي:</b> لو تركته شغال، الصورة تنرسل لـ Yandex و Baidu. شيله من نافذة الإضافة للصور الحساسة.</p>
+      <p class="dim">ما يحدد بيوت أشخاص ولا هويات: يوقف على مستوى المدينة في الصور الخاصة، ويتجاهل لوحات السيارات.</p>
+    </div>
+  </div>
+</div>
+
+<div id="lightbox" class="lightbox hidden"><img alt=""><p></p></div>
+
+<script src="vendor/maplibre-gl.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+# secrets and local state
+.env
+.venv/
+__pycache__/
+*.pyc
+.claude/
+
+# case folders, uploaded photos and the board never leave this computer
+cases/
+*_saqr-*/
+_saqr_trash/
+saqr_board*.json
