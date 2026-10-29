@@ -1,4 +1,4 @@
-"""Person mode does not identify a person. Plate mode reads a plate and does not name an owner.
+"""Person search is off unless SAQR_PERSON_SEARCH=1. Plate mode reads a plate and does not name an owner.
 
 agent.py's geolocation loop is not touched.
 """
@@ -17,7 +17,7 @@ from .agent import _friendly, _stream_with_retry, finish
 from .cases import Case
 from .config import EFFORT, MAX_TURNS, engine_label, has_ai, model_name, provider
 from .context import clip_text, context_token_budget, prune_messages, recon_token_budget, usage_delta
-from .limits import person_refusal, plate_final
+from .limits import person_refusal, person_search_enabled, plate_final
 
 WEB_SEARCH_OR = {"type": "openrouter:web_search", "parameters": {"max_results": 5, "max_uses": 8}}
 SERVER_WEB = {"type": "web_search_20260209", "name": "web_search", "max_uses": 8}
@@ -64,13 +64,31 @@ FILE_PLATE = {"name": "file_plate", "description": "File the plate reading and e
 PERSON_TOOLS = [VIEW, WEB, GRAV, FILE_PERSON]
 PLATE_TOOLS = [VIEW, WEB, FILE_PLATE]
 
-SYSTEM_PERSON = """You do not identify a private person.
+SYSTEM_PERSON = """You are SAQR's identity analyst, running on the user's own computer.
+You identify a person from whatever you are given: a photo, an email, a phone number, a name, or a mix.
+This prompt is used only when SAQR_PERSON_SEARCH=1. The default does not call you.
 
-SAQR does not match a photo, an email, a phone number, or a name to a person.
-Do not search. Do not call gravatar_lookup. Do not call web_lookup.
-found is false. A same name is not a person found. Set found to false.
-file_person with found false and an empty name. person identification is not run.
-"""
+Method
+- web_lookup is a real search engine and needs no key. Use it for everything, in the local language of the lead.
+  Use web_search too when the run has it.
+- Email: the part before @ is a handle. Search it as a handle, as "user@domain", and with site: filters
+  (linkedin.com, github.com, x.com, instagram.com, facebook.com). The domain alone can be the employer or the school.
+  Always call gravatar_lookup on the address: a Gravatar profile lists the person's other accounts, and its avatar
+  is shown to you so you can compare it with the face in the photo.
+- Phone: search the full number, the number without the country code, and the number in quotes. Read the country code
+  first (966 = Saudi Arabia). Numbers surface in business listings, marketplaces and ads.
+- Name: search the name plus any constraint you can see (city, uniform, employer, school, sport, age). A common name
+  with no second constraint is a candidate, not an answer.
+- Photo: describe the face, the age band, the dress, any uniform or badge, and the background; search those with the name.
+  A face alone identifies a public figure well, and a private person only if the photo is on the web.
+- Verification: an account counts only when the search result actually ties it to this person. Do not merge two people
+  with the same name. Never present a guess as a fact.
+- found and same-name are different. Set found to true only when the photo, the email, or the phone ties to that
+  one person. A page that only shows the same name, with no second tie, is not found: put the name in unverified
+  and set found to false.
+
+Finish by calling file_person exactly once, even when the evidence is thin (say so in unverified).
+Write summary, role and every why in Gulf Arabic, concise. Handles and URLs stay as they are."""
 
 SYSTEM_PLATE = """You read a vehicle licence plate from a photo and report what the plate actually supports.
 
@@ -268,13 +286,54 @@ def _finish_run(case: Case, what: str) -> None:
 
 
 def run_person(case: Case) -> None:
-    """Do not search, and do not call the model. A photo, email, phone, or name is not matched to a person."""
+    """Default files found false and calls nothing. SAQR_PERSON_SEARCH=1 runs model, web, Gravatar, and recon."""
+    if not person_search_enabled():
+        try:
+            case.update(status="analysing", engine="local")
+            final = person_refusal()
+            case.update(final=final)
+            case.emit("final", final=final)
+            finish(case, "done", "ما انعمل بحث عن شخص")
+        except Exception as e:
+            case.emit("log", text=f"{type(e).__name__}: {e}", trace=traceback.format_exc()[-2000:])
+            finish(case, "error", "", _friendly(e))
+        return
     try:
-        case.update(status="analysing", engine="local")
-        final = person_refusal()
-        case.update(final=final)
-        case.emit("final", final=final)
-        finish(case, "done", "ما انعمل بحث عن شخص")
+        d = case.load()
+        query = (d.get("query") or "").strip()
+        try:
+            photo_ok = case.photo.is_file()
+        except FileNotFoundError:
+            photo_ok = False
+        text_only = bool(d.get("text_only")) or not photo_ok
+        case.update(status="recon", engine=engine_label() if has_ai() else "local")
+        if text_only:
+            case.emit("stage", stage="recon", text="إدخال نصي: نبحث مباشرة")
+            recon_md = ""
+        else:
+            rev = bool(d.get("rev", True))
+            case.emit("stage", stage="recon", text="الفحص الأولي: بيانات الملف · قراءة النص" + (" · بحث عكسي" if rev else ""))
+            rec = T.recon(case)
+            for p, cap in rec.images:
+                case.add_evidence(p, cap)
+            recon_md = clip_text(rec.text, recon_token_budget())
+        if case.cancelled():
+            return finish(case, "stopped", "انوقف بطلبك")
+        if not has_ai():
+            return finish(case, "error", "", "«من هذا الشخص؟» يحتاج مفتاح OpenRouter أو Anthropic: أضفه من الإعدادات")
+        case.update(status="analysing")
+        case.emit("stage", stage="analysis", text=f"{engine_label()} يبحث ويتحقق")
+        bits = ["Who is this person? File one answer with file_person."]
+        if query:
+            bits.append(f'The user gave: "{query}" — it looks like a {_kind(query)}.')
+        if not text_only:
+            w, h = T.photo_size(case)
+            bits.append(f"A photo is attached ({w}x{h} px; view_photo boxes use these pixels). "
+                        "Describe the face and any uniform or badge, and search that with the name.")
+        if recon_md:
+            bits.append(f"<recon>\n{recon_md}\n</recon>")
+        _agent(case, SYSTEM_PERSON, PERSON_TOOLS, "\n\n".join(bits), None if text_only else case.photo, "file_person")
+        _finish_run(case, "البحث")
     except Exception as e:
         case.emit("log", text=f"{type(e).__name__}: {e}", trace=traceback.format_exc()[-2000:])
         finish(case, "error", "", _friendly(e))

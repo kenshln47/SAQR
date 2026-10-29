@@ -13,6 +13,7 @@ dependencies = [
     "requests==2.34.2",
     "pillow==12.3.0",
     "pillow-heif==1.8.1",
+    "pyexiv2==2.16.0",
     "numpy==2.5.2",
     "scipy==1.18.1",
     "opencv-python-headless==5.0.0.93",
@@ -46,9 +47,9 @@ explicit = true
 torch = { index = "pytorch-cpu" }
 torchvision = { index = "pytorch-cpu" }
 
-# pyfrpc is Mapy.cz-only and does not build on Windows.
-# pyexiv2, pytest, pytest-asyncio, and cython are declared by streetlevel and are not installed:
-# setup.sh uses --no-deps, and those packages are not required for the panorama providers SAQR calls.
+# pyfrpc is Mapy.cz-only and does not build on Windows. It is not imported by the providers SAQR calls.
+# pytest, pytest-asyncio, and cython are declared upstream and are not imported at runtime.
+# pyexiv2 is required: streetlevel.exif imports it, and streetview/baidu/yandex/naver/kakao import that module.
 [[tool.uv.dependency-metadata]]
 name = "streetlevel"
 version = "0.12.13"
@@ -61,6 +62,7 @@ requires-dist = [
     "protobuf>4",
     "pycryptodome",
     "pyequilib",
+    "pyexiv2",
     "pyproj",
     "requests",
     "scipy",

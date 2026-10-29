@@ -52,20 +52,27 @@ Limits you must keep
 PRIVATE_NOTE = """
 Private-place mode. This prompt stands alone. It does not include the region/street system text.
 
-This mode stops at the city for a private home, a school, or a routine. Do not pin the building.
-Do not name the school, the workplace, or the routine. Do not search listings for a door.
+Keep the evidence ladder. Start from the city, then climb only as far as the evidence:
+1. Text first: a shop sign next door, a street name, a building number, a delivery sticker. Search each one in the local language.
+2. Architecture plus a mapped footprint (satellite, OSM building outlines).
+3. Interiors: the view out of the window, the skyline, the neighbourhood, finishes and furniture.
+4. listing_search: an Airbnb, aqar.fm, Bayut, or Haraj listing may carry the same photo and an address.
 
+Set level to point and set listing_tie to true only when a listing ties that building to the photo.
+Without that listing tie, it stops at the city. Do not file a street or a point. Do not set listing_tie.
+Do not name a school. Do not name a daily routine.
 Do not invent a tool result. If you did not run the tool, the claim is an unverified estimate.
 Do not invent a building.
-A plate may be read as a location anchor. Do not guess, infer, or name an owner from it.
-File level city. A street or a point is not an answer in this mode.
+Do not guess, infer, or name an owner. A plate is not an owner lookup.
 """
 
 MODE_HINT = {
     "region": "Mode: FIND REGION (quick). Aim for country, region and city with an honest radius. Use at most ~12 tool calls.",
     "street": ("Mode: FIND STREET (deep). Push to the street or camera point when the evidence allows: narrow, then "
                "street-level checks, sweeps, terrain and satellite evidence. Stop when one strong constraint is confirmed, or two weaker ones agree. If neither holds, still file the best city or district with a wider radius."),
-    "private": "Mode: PRIVATE PLACE. Stop at the city. Do not pin a building, a school, or a routine.",
+    "private": ("Mode: PRIVATE PLACE. Climb the evidence ladder. listing_search is allowed. "
+                "File level point only when a listing ties the building, and set listing_tie true. "
+                "Otherwise stop at the city. Do not name a school or a routine."),
 }
 
 NUM = {"type": "number"}
@@ -113,7 +120,8 @@ TOOLS = [
          "alternatives": {"type": "array", "items": {"type": "object", "properties": {
              "place": {"type": "string"}, "lat": NUM, "lon": NUM, "why": {"type": "string"}},
              "required": ["place", "why"], "additionalProperties": False}},
-         "unverified": {"type": "array", "items": {"type": "string"}}},
+         "unverified": {"type": "array", "items": {"type": "string"}},
+         "listing_tie": {"type": "boolean", "description": "Private mode. True only when a listing ties this photo to the building. Otherwise false."}},
          "required": ["country", "lat", "lon", "radius_km", "level", "confidence", "summary", "clues"],
          "additionalProperties": False}},
 ]

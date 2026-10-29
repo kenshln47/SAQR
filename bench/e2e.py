@@ -22,6 +22,40 @@ CONFIGS = (
     {"id": "skip_prior_norev", "nc_models": False, "rev": False},
 )
 
+# 14+9+9+8+6+4 = 50. Stable: lowest ids in each stratum. Not a flash-model score.
+HEADLINE_TAKE = (
+    ("city", 14),
+    ("town", 9),
+    ("rural", 9),
+    ("gulf", 8),
+    ("interior", 6),
+    ("screenshot", 4),
+)
+FLASH_MODEL = "z-ai/glm-5.3-flash"
+HEADLINE_MODEL = "anthropic/claude-opus-5.5"
+
+
+def headline_rows(manifest: list[dict]) -> list[dict]:
+    """Stratified 50 for the opus headline. Short strata contribute what they have. No invented rows."""
+    grouped: dict[str, list[dict]] = {}
+    for row in manifest:
+        grouped.setdefault(row.get("stratum") or "", []).append(row)
+    for rows in grouped.values():
+        rows.sort(key=lambda r: str(r.get("id") or ""))
+    chosen: list[dict] = []
+    for stratum, n in HEADLINE_TAKE:
+        chosen.extend(grouped.get(stratum, [])[:n])
+    return chosen
+
+
+def output_paths(tier: str) -> tuple[str, str]:
+    """Detail file, finished file. Flash never writes score.json."""
+    if tier == "flash":
+        return "flash_detail.jsonl", "flash.json"
+    if tier == "headline":
+        return "headline_detail.jsonl", "score.json"
+    raise ValueError(tier)
+
 
 def strip_exif(data: bytes) -> bytes:
     """Drop EXIF, including a GPS tag, so recon cannot read the truth off the file."""

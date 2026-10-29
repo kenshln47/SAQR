@@ -18,11 +18,12 @@ Do not build the corpus with `bench.py make-streetview`. That command fetches Go
 Street View without a key, which SAQR refuses.
 
 Photos for a later run live outside git (`SAQR_CORPUS`, default `/var/saqr-corpus`).
-The product score is `run_e2e.py`: the agent loop, medium effort, four configurations
-(prior crossed with reverse search). It writes `score.json` only when every manifest
-photo has a row in every configuration. `run_score.py` is a GeoCLIP-only local prior.
-That file is not the product score. Neither score has been written. Screenshot is 17,
-short of 25, because Commons returned HTTP 429. Those rows were not invented.
+`run_e2e.py flash` is every photo times four configurations on `z-ai/glm-5.3-flash`.
+It writes `flash.json` only when that tier finishes. That file is not the product number.
+`run_e2e.py headline` is a stratified 50 on `anthropic/claude-opus-5.5` and writes
+`score.json` only when every selected row exists. `run_score.py` is a GeoCLIP-only
+local prior and is not this score. Neither score has been written. Screenshot is 25.
+`upload.wikimedia.org` returned HTTP 429. `commons.wikimedia.org/w/thumb.php` supplied the last 8. Rows were not invented.
 
 A Commons geosearch on 2026-10-28 returned HTTP 200 with `cirrussearch-too-busy-error`.
 `fetch_commons.py` retries that query and exits without writing a file when the API

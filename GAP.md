@@ -33,9 +33,9 @@ SAQR mode `street` can run MegaLoc panorama sweeps, a terrain skyline, and the s
 
 The page marks this Beta. It describes one supported city (the example is San Francisco), interior or exterior, about twenty candidates with address, postcode, lat/lon, property photos, and a similarity score it says is not a probability. Review states on the page are confirmed, possible, and dismissed. It says the search cannot cover multiple cities at once and that every result should be visually corroborated.
 
-This tree has no city property-imagery index and does not return about twenty addresses with property photos. Mode `private` stops at the city. `PRIVATE_NOTE` says not to pin a building, a school, or a routine. `listing_search` is refused in that mode. Pin review states confirmed / possible / dismissed exist; only confirmed writes `truth.json`.
+This tree has no city property-imagery index and does not return about twenty addresses with property photos. Mode `private` keeps an evidence ladder and may call `listing_search`. A building pin is kept only when `listing_tie` is true. Otherwise it stops at the city. It does not name a school or a daily routine. Pin review states confirmed / possible / dismissed exist; only confirmed writes `truth.json`.
 
-PARTIAL because the geolocation tools exist and the property-photo corpus the page describes does not. Private-place targeting was not extended. `B-PRIV-01` is closed by the city stop, not by a listing match. No day cost on this row.
+PARTIAL because the geolocation tools exist and the property-photo corpus the page describes does not. The building pin is a listing tie, not a visual property index. No day cost on this row.
 
 ## short-term-rental — MISSING
 
@@ -49,7 +49,7 @@ Day cost: **60 engineering days, estimate, not a measured plan.** Counted only i
 
 The page describes an email or phone lookup (a place lookup is also on that form). It says the check returns public accounts, usernames, reviews, and images, with source and date, run at submit time. Reviews are pinned at the reviewed place, not at the author's current location. Images can be sent on to Find Region or Find Street. The page says the product does not log in, does not read private messages, does not obtain nonpublic records, and does not prove ownership or current location.
 
-SAQR mode `person` (`run_person` in `app/identify.py`) accepts a photo and/or an email, a phone number, or a name and does not look any of them up. It does not call the model, the web, Gravatar, or recon. It files `found: false`, an empty name, and empty accounts. That is a refusal, not the lookup the page describes. This phase does not add sources.
+SAQR mode `person` (`run_person` in `app/identify.py`) accepts a photo and/or an email, a phone number, or a name. The default does not look any of them up. It does not call the model, the web, Gravatar, or recon. It files `found: false`, an empty name, and empty accounts. `SAQR_PERSON_SEARCH=1` restores the previous loop: the model, `web_lookup`, `gravatar_lookup`, and recon. That path needs an API key. `found` is true only with a second tie. A same name is not a person found. This phase does not add sources.
 
 ## identify-car — PARTIAL
 

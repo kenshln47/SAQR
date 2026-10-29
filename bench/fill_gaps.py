@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import sys
 import time
+import urllib.parse
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -65,7 +66,16 @@ def search_screenshots(limit: int = 50, offset: int = 0) -> list[dict]:
         info = (page.get("imageinfo") or [{}])[0]
         if not coords or not str(info.get("mime") or "").startswith("image/"):
             continue
-        url = info.get("thumburl")
+        title = str(page.get("title") or "")
+        fname = title.split(":", 1)[-1] if ":" in title else title
+        thumb_php = ""
+        if fname:
+            thumb_php = "https://commons.wikimedia.org/w/thumb.php?" + urllib.parse.urlencode({"f": fname, "w": "640"})
+        special = ""
+        if fname:
+            special = "https://commons.wikimedia.org/wiki/Special:FilePath/" + urllib.parse.quote(fname) + "?width=640"
+        upload = info.get("thumburl") or ""
+        url = thumb_php or special or upload
         if not url:
             continue
         out.append({
@@ -76,6 +86,7 @@ def search_screenshots(limit: int = 50, offset: int = 0) -> list[dict]:
             "lat": float(coords[0]["lat"]),
             "lon": float(coords[0]["lon"]),
             "url": url,
+            "fallback": special if special and special != url else upload,
             "source": "commons",
             "license": "",
         })
@@ -89,11 +100,26 @@ def _store(cand: dict, have: set[str], added: list[dict]) -> bool:
     raw = CORPUS / "photos" / "_raw" / f"{cand['id'].replace(':', '-')}.bin"
     raw.parent.mkdir(parents=True, exist_ok=True)
     time.sleep(2)
-    try:
-        _download(cand["url"], raw)
-        how = _save_image(raw, dest)
-    except (OSError, ValueError) as exc:
-        print(f"skip {cand['id']}: {exc}", file=sys.stderr)
+    urls = [cand["url"]]
+    fallback = cand.get("fallback") or ""
+    if fallback and fallback not in urls:
+        urls.append(fallback)
+    last = ""
+    for i, url in enumerate(urls):
+        if i:
+            time.sleep(45)
+        try:
+            _download(url, raw)
+            how = _save_image(raw, dest)
+            last = ""
+            break
+        except (OSError, ValueError) as exc:
+            last = str(exc)
+            cand["_fail"] = last
+            print(f"skip {cand['id']}: {last[:180]}", file=sys.stderr)
+            if "429" not in last:
+                return False
+    if last:
         return False
     added.append({
         "id": cand["id"],
@@ -163,5 +189,57 @@ def main() -> int:
     return 0
 
 
+def retry_screenshots() -> int:
+    """One slower pass. thumbs come from commons.wikimedia.org, not upload.wikimedia.org."""
+    rows = _load()
+    have = {r["id"] for r in rows}
+    added: list[dict] = []
+
+    def need() -> int:
+        return WANT["screenshot"] - sum(1 for r in rows if r["stratum"] == "screenshot") - len([r for r in added if r["stratum"] == "screenshot"])
+
+    print(f"retry need {need()}", file=sys.stderr)
+    if need() <= 0:
+        return 0
+    time.sleep(40)
+    streak = 0
+    for offset in (0, 20, 40, 60, 80, 100, 120, 140):
+        if need() <= 0 or streak >= 2:
+            break
+        time.sleep(10)
+        found = search_screenshots(20, offset)
+        print(f"retry offset={offset} coords={len(found)}", file=sys.stderr)
+        if not found:
+            break
+        for cand in found:
+            if need() <= 0 or streak >= 2:
+                break
+            if cand["id"] in have:
+                continue
+            time.sleep(18)
+            if _store(cand, have, added):
+                streak = 0
+                print(f"saved {cand['id']} left {need()}", file=sys.stderr)
+            elif "429" in str(cand.get("_fail") or ""):
+                streak += 1
+            else:
+                streak = 0
+    if added:
+        with (CORPUS / "manifest.jsonl").open("a", encoding="utf-8") as fh:
+            for row in added:
+                fh.write(json.dumps(row, ensure_ascii=False) + "\n")
+    all_rows = _load()
+    counts: dict[str, int] = {}
+    for row in all_rows:
+        counts[row["stratum"]] = counts.get(row["stratum"], 0) + 1
+    summary = {"n": len(all_rows), "by_stratum": counts, "corpus": str(CORPUS), "added": len(added)}
+    (CORPUS / "summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
+    print(json.dumps(summary))
+    if counts.get("screenshot", 0) < WANT["screenshot"]:
+        print(f"short of target screenshot {counts.get('screenshot', 0)}. screenshot rows were not invented.", file=sys.stderr)
+        return 2
+    return 0
+
+
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(retry_screenshots() if "--retry-thumbs" in sys.argv else main())

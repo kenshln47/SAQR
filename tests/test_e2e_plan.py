@@ -2,10 +2,11 @@
 from __future__ import annotations
 
 import io
+from pathlib import Path
 
 from PIL import Image
 
-from bench.e2e import CONFIGS, aggregate, strip_exif
+from bench.e2e import CONFIGS, HEADLINE_TAKE, aggregate, headline_rows, output_paths, strip_exif
 import bench.run_e2e as run_e2e
 
 
@@ -49,3 +50,19 @@ def test_strip_exif_drops_the_description_tag() -> None:
 def test_no_key_does_not_write_a_score(monkeypatch) -> None:
     monkeypatch.setattr(run_e2e, "has_ai", lambda: False)
     assert run_e2e.main() == 2
+
+
+def test_headline_is_fifty_and_flash_is_not_score_json() -> None:
+    assert sum(n for _, n in HEADLINE_TAKE) == 50
+    manifest = []
+    for stratum, n in HEADLINE_TAKE:
+        for i in range(n + 3):
+            manifest.append({"id": f"{stratum}-{i:02d}", "stratum": stratum, "file": "x"})
+    chosen = headline_rows(manifest)
+    assert len(chosen) == 50
+    assert output_paths("flash") == ("flash_detail.jsonl", "flash.json")
+    assert output_paths("headline")[1] == "score.json"
+    text = (Path(__file__).resolve().parents[1] / "bench" / "run_e2e.py").read_text(encoding="utf-8")
+    assert "z-ai/glm-5.3-flash" in text
+    assert "anthropic/claude-opus-5.5" in text
+    assert "Not the product number" in text

@@ -10,7 +10,7 @@ This is not a measured accuracy claim. There is no scored SAQR photo corpus. Com
 
 - Windows, Linux, or macOS. Python 3.12 via [uv](https://docs.astral.sh/uv/) (`winget install astral-sh.uv` on Windows).
 - The GeoInt skill (MIT) is cloned by setup into `~/.claude/skills/geoint` (`%USERPROFILE%\.claude\skills\geoint` on Windows), or into `SAQR_GEOINT` if that is set, when `scripts/recon.py` is not already there. It is not copied into this repository. The status bar says when it is missing.
-- An NVIDIA GPU is optional. `setup.bat` tries a CUDA torch wheel and falls back to CPU torch. `scripts/setup.sh` installs CPU torch unless `nvidia-smi -L` succeeds, then the cu130 index. GeoCLIP and MegaLoc weights are not in this repo. GeoInt downloads them when those scripts run. StreetCLIP is not on the commercial path.
+- An NVIDIA GPU is optional. `setup.bat` and `scripts/setup.sh` install CPU torch unless `nvidia-smi -L` succeeds, then the cu130 index. GeoCLIP and MegaLoc weights are not in this repo. GeoInt downloads them when those scripts run. StreetCLIP is not on the commercial path.
 
 ## Run
 
@@ -42,22 +42,22 @@ Without a key, region and street runs use local metadata, OCR, object detection,
 
 Find Region and Find Street use `SYSTEM` in `app/agent.py`. That text tells the model not to geolocate a private person's home, school, or routine, to stop at city level, and never to read a plate number.
 
-Private-place mode stops at the city. `PRIVATE_NOTE` stands alone and says so. The filed answer is forced to level `city` with a radius of at least 15 km (`app/limits.py`). Listing search is refused in this mode. A building, a school, and a routine are not pinned. A plate may be read as a location anchor. The prompt says not to name an owner. `B-PRIV-01` is closed by this gate, not by a better search.
+Private-place mode keeps an evidence ladder and may call `listing_search`. A building pin (`level` point) is kept only when the filed answer sets `listing_tie` because a listing matched the photo. Without that tie it stops at the city and the radius is at least 15 km (`app/limits.py`). It does not name a school or a daily routine. A plate is not an owner lookup.
 
-Person mode does not identify a person. It does not search the web, does not call Gravatar, and does not send the photo out. It files `found: false` and an empty name (`app/limits.py`).
+Person mode does not identify a person unless `SAQR_PERSON_SEARCH=1`. The default files `found: false`, does not call the model, the web, Gravatar, or recon, and does not send the photo out. With `SAQR_PERSON_SEARCH=1` the previous loop runs: the model, `web_lookup`, `gravatar_lookup`, and recon. That path needs an API key. `found` is true only when a second tie exists. A same name is not found.
 
 Plate mode reads the plate characters and names the vehicle. The owner field is cleared in code. The prompt says not to search for an owner. It needs an API key.
 
 The car module's prompt says not to read the plate. Find Region and Find Street tell the model a plate counts only by style, colours, and country or region code.
 
-`B-PRIV-01` is closed. Private-place mode stops at the city in the prompt and again when the answer is filed. Person mode does not match a photo, email, phone, or name to a person. Plate mode still reads the characters and does not record an owner.
+`B-PRIV-01` is not closed by deleting the path. The honest default is the refusal. `SAQR_PERSON_SEARCH=1` is the person loop. A private building pin exists only with a listing tie. Plate mode still reads the characters and does not record an owner.
 
 | Module | What the code does |
 |---|---|
 | تحديد المنطقة (Find Region) | Country / region / city and a radius. Private homes and private people stop at city level in this mode. |
 | تحديد الشارع (Find Street) | MegaLoc sweeps, terrain skyline, satellite tool. Same city-level stop for a private home. |
-| تحديد مكان خاص (Private place) | Stops at the city. Does not pin a building, a school, or a routine. Listing search is refused. |
-| من هذا الشخص؟ (Who is this?) | Does not identify a person. `found` is false. No web search and no Gravatar. |
+| تحديد مكان خاص (Private place) | Evidence ladder and listing search. A point is kept only when `listing_tie` is set. Otherwise it stops at the city. Does not name a school or a routine. |
+| من هذا الشخص؟ (Who is this?) | Does not identify a person unless `SAQR_PERSON_SEARCH=1`. Default: `found` is false. No web search and no Gravatar. |
 | لوحة السيارة (Plate) | Reads the characters and names the vehicle. The owner field is cleared. Needs an API key. |
 | التحقق من الصورة (Verify Image) | Metadata and error-level analysis always. With a key, one model reading: an assessment, two likelihoods, and signals. No named-generator list and no separate face-swap score. Without a key the assessment is inconclusive and the local checks still run. |
 | تحديد السيارة (Identify Car) | One make, model, year range, and body type. Not ten ranked candidates and not reference images. The prompt does not read the plate. Needs an API key. |

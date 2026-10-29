@@ -71,7 +71,7 @@ What breaks: a licence fix shipped as a silent accuracy regression. Trigger: any
 
 Fix: measure prior-off vs GeoCLIP-only vs StreetCLIP+GeoCLIP in phase 2. If the gap is material, buy a StreetCLIP licence or call `prior.py --models geoclip` and keep StreetCLIP out. Do not leave the full skip in place once that measurement exists.
 
-The commercial follow-up is now `prior.py --models geoclip` after `--skip calib,prior` (`app/licensing.py` `prior_followup_args`, `app/tools.py` `recon`). StreetCLIP still loads only when `SAQR_ALLOW_NC_MODELS=1`. That is the permissive swap, not a measurement. The corpus outside git is 232 photos: city 65, town 40, rural 40, gulf 40, interior 30, screenshot 17. Screenshot is short of 25. `bench/run_e2e.py` is the measurement: the agent loop, medium effort, four configurations (prior crossed with reverse search). It did not run. `ANTHROPIC_API_KEY` and `OPENROUTER_API_KEY` in `.env` are empty. `score.json` was not written. A partial `geoclip_detail.jsonl` from the GeoCLIP-only scorer is not this score. `bench.py make-streetview` was not used. This finding stays open.
+The commercial follow-up is now `prior.py --models geoclip` after `--skip calib,prior` (`app/licensing.py` `prior_followup_args`, `app/tools.py` `recon`). StreetCLIP still loads only when `SAQR_ALLOW_NC_MODELS=1`. That is the permissive swap, not a measurement. The corpus outside git is 240 photos: city 65, town 40, rural 40, gulf 40, interior 30, screenshot 25. `bench/run_e2e.py flash` would run every photo on `z-ai/glm-5.3-flash`. `bench/run_e2e.py headline` would run a stratified 50 on `anthropic/claude-opus-5.5` and only then write `score.json`. It did not run. `ANTHROPIC_API_KEY` and `OPENROUTER_API_KEY` in `.env` are empty. `score.json` was not written. A partial `geoclip_detail.jsonl` from the GeoCLIP-only scorer is not this score. `bench.py make-streetview` was not used. This finding stays open.
 
 Effort: M. Verify: a bench score with the three prediction files, and a commercial argv that still requests GeoCLIP. The argv check is in `tests/test_recon_followup.py`. The score file does not exist yet.
 
@@ -88,7 +88,7 @@ Fix that I will not do here: leave the modules untouched. Do not wire them into 
 
 Effort: not estimated. Verify: `git diff` on `app/identify.py`, `PRIVATE_NOTE`, and the person/plate UI is empty after later phases.
 
-Closed by the city stop and the person refusal in `app/limits.py`. Private-place answers are forced to level `city` and a radius of at least 15 km. Listing search is refused in that mode. Person mode does not search and files `found: false`. Plate mode still reads the characters. The owner field is cleared in code. This is not a better identifier.
+The refusal-only close is withdrawn. Deleting the path was not a fix. The default still files `found: false` and does not search. `SAQR_PERSON_SEARCH=1` restores the previous person loop (model, web, Gravatar, recon). Private mode keeps the evidence ladder and may call `listing_search`. `private_final` keeps `level=point` only when `listing_tie` is true. Otherwise it stops at the city with a radius of at least 15 km. A school and a daily routine are not named. Plate mode still reads the characters. The owner field is cleared. The README states that default.
 
 ## HIGH
 

@@ -9,7 +9,7 @@ resolution-markers = [
 [[manifest.dependency-metadata]]
 name = "streetlevel"
 version = "0.12.13"
-requires-dist = ["aiohttp", "bd09convertor", "coordinatesconverter", "numpy", "pillow", "protobuf>4", "pycryptodome", "pyequilib", "pyproj", "requests", "scipy"]
+requires-dist = ["aiohttp", "bd09convertor", "coordinatesconverter", "numpy", "pillow", "protobuf>4", "pycryptodome", "pyequilib", "pyexiv2", "pyproj", "requests", "scipy"]
 
 [[package]]
 name = "aiohappyeyeballs"
@@ -1652,6 +1652,28 @@ wheels = [
 ]
 
 [[package]]
+name = "pyexiv2"
+version = "2.16.0"
+source = { registry = "https://pypi.org/simple" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/68/56/2f20091eebab44b9e7a9c281dfbe14cc21e771bfc411527d5ff5d676bffe/pyexiv2-2.16.0-cp312-none-macosx_15_0_arm64.whl", hash = "sha256:eaa915750d542fa47659b8c609a3bda8e37c9ec6d20e95ca0249d1b861c5a71a", size = 1322887, upload-time = "2026-08-02T13:35:33.229Z" },
+    { url = "https://files.pythonhosted.org/packages/cb/ec/0acd342d7699f729fea5064f6db1fdf9c94d5278128749520fe79b7a502b/pyexiv2-2.16.0-cp312-none-macosx_15_0_x86_64.whl", hash = "sha256:c7bc6f332090ec16219e9fc8ff4934481acb31b240e2a75c3af299970f3caee3", size = 1366351, upload-time = "2026-08-02T13:35:36.129Z" },
+    { url = "https://files.pythonhosted.org/packages/c7/51/8bc6965842580665f23db327c982e1a136ce2afeb6790144a19c87b095b8/pyexiv2-2.16.0-cp312-none-manylinux2014_aarch64.whl", hash = "sha256:6feba8985e9721a12aad06f9f7e3d903973c6553d33581f6cfe6ad8e3bc0e501", size = 1518697, upload-time = "2026-08-02T13:35:38.76Z" },
+    { url = "https://files.pythonhosted.org/packages/7f/b1/e994c0e47f458fb413a17c2a19dcecca7ec84fa5d9840002838c44bf8154/pyexiv2-2.16.0-cp312-none-manylinux2014_x86_64.whl", hash = "sha256:6e4bb11379db71f87d192471f6f8859969fe038e979d648fc8d84ab7885fee04", size = 1600926, upload-time = "2026-08-02T13:35:41.378Z" },
+    { url = "https://files.pythonhosted.org/packages/36/d8/6f63ab1edbac847e78acfc6e0eab123617f9f1e66f02ece96ed3c5c9e573/pyexiv2-2.16.0-cp312-none-win_amd64.whl", hash = "sha256:e02d9fa3d572b26ade2d647f789b9d8818db0ed8a2ec3e154b96398603e17887", size = 1217833, upload-time = "2026-08-02T13:35:43.499Z" },
+    { url = "https://files.pythonhosted.org/packages/07/50/d09727af74b2136d440b45c69bfb7831ec47107f145acbeff8178cf76915/pyexiv2-2.16.0-cp313-none-macosx_15_0_arm64.whl", hash = "sha256:8930754bf783777eaca6e3642230166f6e87114bbe77e3b55d532c0b8e42d57b", size = 1322982, upload-time = "2026-08-02T13:35:46.11Z" },
+    { url = "https://files.pythonhosted.org/packages/18/7c/98ef98ce89815cb1cee1f5f60086edd20702665cfcb02a9f662bba0c8506/pyexiv2-2.16.0-cp313-none-macosx_15_0_x86_64.whl", hash = "sha256:73380a539e6701ded223355dd3e6432aa31b8f255e77bfa6588104f53919ebf6", size = 1366519, upload-time = "2026-08-02T13:35:48.04Z" },
+    { url = "https://files.pythonhosted.org/packages/c1/2e/41a9748668f593fbe493a944368562c8319ffb9b14a9b11f1a880e2a802c/pyexiv2-2.16.0-cp313-none-manylinux2014_aarch64.whl", hash = "sha256:d73fa001500f22273f5e1ceb4924be6050a04bb76e8936dfc633894dcc7fc546", size = 1518795, upload-time = "2026-08-02T13:35:50.066Z" },
+    { url = "https://files.pythonhosted.org/packages/2a/a2/732fc83861ef0d7fa148259983790ad85df1c152372576ddb7b3aa863120/pyexiv2-2.16.0-cp313-none-manylinux2014_x86_64.whl", hash = "sha256:4344efa35ef62d1f8b1ff0b7cb1d2faae34aeb50517ef083da03b5a97275d5f2", size = 1601144, upload-time = "2026-08-02T13:35:52.561Z" },
+    { url = "https://files.pythonhosted.org/packages/44/27/2fd8397c64c6c73d2e95db863d425e8ae0fdfaae26057c27188adc35f119/pyexiv2-2.16.0-cp313-none-win_amd64.whl", hash = "sha256:eb07e2e90f99e373491ee55c084bfd6ebedf762d7846390be078b229dab3b164", size = 1217959, upload-time = "2026-08-02T13:35:54.742Z" },
+    { url = "https://files.pythonhosted.org/packages/54/3c/a0c028fcbf7812b8f8879d7583692496cc410d0320975dbd6237cbb56215/pyexiv2-2.16.0-cp314-none-macosx_15_0_arm64.whl", hash = "sha256:6597d7f14286f65411b29fceb94f7b5bdfdab7b958ebacc66183a68ce430410e", size = 1323104, upload-time = "2026-08-02T13:35:56.887Z" },
+    { url = "https://files.pythonhosted.org/packages/66/e2/e686a12443cc85b6c9724d0260a99225ff8ccdf1f1155671a94e0b5c38ca/pyexiv2-2.16.0-cp314-none-macosx_15_0_x86_64.whl", hash = "sha256:2a6f05a1da1bc23565dc7edf7f04c3ed99160d5310050ed6b01fab744cc9df4e", size = 1366582, upload-time = "2026-08-02T13:35:58.97Z" },
+    { url = "https://files.pythonhosted.org/packages/19/bc/2fb218d015a7bb60b6189c8ec539839690f8113662cb33192c1398a9c342/pyexiv2-2.16.0-cp314-none-manylinux2014_aarch64.whl", hash = "sha256:dcb79d9433137ad9fd83fea7c04ea4bbffe272dc128da88af862b542dae899b2", size = 1518911, upload-time = "2026-08-02T13:36:01.243Z" },
+    { url = "https://files.pythonhosted.org/packages/a1/52/cfc4c2eede4bc490f44b2ea9ee1cbeda5aca8c8465b0032c059901c89eab/pyexiv2-2.16.0-cp314-none-manylinux2014_x86_64.whl", hash = "sha256:6a1548605d1103711e758f4e36ebb32099763d4dfb9c02fdda67c6816082a627", size = 1601154, upload-time = "2026-08-02T13:36:03.513Z" },
+    { url = "https://files.pythonhosted.org/packages/ed/2c/a5dce7c97297d96e9d6968a7e8cbaa24999a04c4f9875debfd23a6e8fbea/pyexiv2-2.16.0-cp314-none-win_amd64.whl", hash = "sha256:bd9df2372c907bc6ea25dd4b5d08ada9361c44b540d10ceeba0891041fae8d93", size = 1218022, upload-time = "2026-08-02T13:36:06.035Z" },
+]
+
+[[package]]
 name = "pygments"
 version = "2.21.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1887,6 +1909,7 @@ dependencies = [
     { name = "protobuf" },
     { name = "pycryptodome" },
     { name = "pyequilib" },
+    { name = "pyexiv2" },
     { name = "pyproj" },
     { name = "python-multipart" },
     { name = "requests" },
@@ -1922,6 +1945,7 @@ requires-dist = [
     { name = "protobuf", specifier = "==7.36.2" },
     { name = "pycryptodome", specifier = "==4.2.0" },
     { name = "pyequilib", specifier = "==0.6.0" },
+    { name = "pyexiv2", specifier = "==2.16.0" },
     { name = "pyproj", specifier = "==3.8.0" },
     { name = "python-multipart", specifier = "==0.0.32" },
     { name = "requests", specifier = "==2.34.2" },
@@ -2055,6 +2079,7 @@ dependencies = [
     { name = "protobuf" },
     { name = "pycryptodome" },
     { name = "pyequilib" },
+    { name = "pyexiv2" },
     { name = "pyproj" },
     { name = "requests" },
     { name = "scipy" },

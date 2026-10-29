@@ -25,6 +25,7 @@ def test_lock_records_torch_and_streetlevel_without_pyfrpc() -> None:
     lock = (ROOT / "uv.lock").read_text(encoding="utf-8")
     assert 'name = "torch"' in lock
     assert 'name = "streetlevel"' in lock
+    assert 'name = "pyexiv2"' in lock
     assert "pyfrpc" not in lock
     workflow = (ROOT / ".github" / "workflows" / "test.yml").read_text(encoding="utf-8")
     assert "uv pip install --python .venv/bin/python pytest ruff pillow" in workflow
@@ -32,10 +33,16 @@ def test_lock_records_torch_and_streetlevel_without_pyfrpc() -> None:
     requirements = (ROOT / "requirements.txt").read_text(encoding="utf-8")
     assert "torch==" not in requirements
     assert "streetlevel==" not in requirements
+    assert "pyexiv2==2.16.0" in requirements
+    assert "pyfrpc" not in lock
     setup = (ROOT / "scripts" / "setup.sh").read_text(encoding="utf-8")
     assert "nvidia-smi" in setup
     assert "https://download.pytorch.org/whl/cpu" in setup
     assert "https://download.pytorch.org/whl/cu130" in setup
+    bat = (ROOT / "setup.bat").read_text(encoding="utf-8")
+    assert "nvidia-smi" in bat
+    assert bat.index("https://download.pytorch.org/whl/cpu") < bat.index("https://download.pytorch.org/whl/cu130")
+    assert "|| uv pip install --python %VP% torch torchvision\n" not in bat
 
 
 def test_shell_entrypoints_exist_and_bind_locally() -> None:

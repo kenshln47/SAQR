@@ -588,10 +588,17 @@ function updateEngine(s) {
   if (!s.claude && state.mode === "car") $('.mode[data-mode="region"]').click();
   $("#modeHint").classList.toggle("hidden", s.claude);
   $('#rerunMenu [data-mode="car"]').disabled = !s.claude;
-  [["person", "لا يطابق شخصاً"], ["plate", "قراءة اللوحة · بدون مالك"]].forEach(([m, t]) => {
-    const b = $(`.mode[data-mode="${m}"]`); b.classList.toggle("needkey", !s.claude); $("small", b).textContent = s.claude ? t : "يحتاج مفتاح API";
-    $(`#rerunMenu [data-mode="${m}"]`).disabled = !s.claude;
-  });
+  const personOn = !!s.person_search;
+  const personBtn = $('.mode[data-mode="person"]');
+  personBtn.classList.toggle("needkey", personOn && !s.claude);
+  $("small", personBtn).textContent = personOn
+    ? (s.claude ? "بحث ويب · Gravatar" : "يحتاج مفتاح API")
+    : "لا يبحث إلا بـ SAQR_PERSON_SEARCH=1";
+  $('#rerunMenu [data-mode="person"]').disabled = personOn && !s.claude;
+  const plateBtn = $('.mode[data-mode="plate"]');
+  plateBtn.classList.toggle("needkey", !s.claude);
+  $("small", plateBtn).textContent = s.claude ? "قراءة اللوحة · بدون مالك" : "يحتاج مفتاح API";
+  $('#rerunMenu [data-mode="plate"]').disabled = !s.claude;
   $("#rerunEng").textContent = s.ready ? `بيستخدم ${s.label}` : "بدون مفتاح: النماذج المحلية بس";
   if (s.cases_dir) {
     $("#helpDir").textContent = s.cases_dir;

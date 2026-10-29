@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 """Run the geolocation agent on the corpus. Does not invent a score.
 
-One street-mode run per photo per configuration, SAQR_EFFORT=medium.
-Writes e2e_detail.jsonl as it goes and score.json only when every photo
-has a row in every configuration. Without a provider key it exits 2 and
-does not write score.json.
+Two tiers, street mode, SAQR_EFFORT=medium, four configurations:
+  flash     every manifest photo on z-ai/glm-5.3-flash. Writes flash.json.
+            That file is a harness check. It is not the product number.
+  headline  a 50-photo stratified subset on anthropic/claude-opus-5.5.
+            Writes score.json only when every selected photo has a row in
+            every configuration.
+
+Without a provider key the process exits 2 and does not write score.json.
 """
 from __future__ import annotations
 
@@ -16,7 +20,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from bench.e2e import CONFIGS, aggregate, strip_exif  # noqa: E402
+from bench.e2e import CONFIGS, FLASH_MODEL, HEADLINE_MODEL, aggregate, headline_rows, output_paths, strip_exif  # noqa: E402
 
 CORPUS = Path(os.environ.get("SAQR_CORPUS", "/var/saqr-corpus")).resolve()
 
@@ -86,7 +90,27 @@ def _one(photo: Path, manifest: dict, cfg: dict) -> dict:
     return row
 
 
-def main() -> int:
+def _prepare_model(tier: str) -> str:
+    if tier == "flash":
+        os.environ["SAQR_PROVIDER"] = "openrouter"
+        os.environ["SAQR_OR_MODEL"] = FLASH_MODEL
+        return FLASH_MODEL
+    if os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN"):
+        os.environ["SAQR_PROVIDER"] = "anthropic"
+        os.environ["SAQR_MODEL"] = "claude-opus-5-5"
+        return HEADLINE_MODEL
+    os.environ["SAQR_PROVIDER"] = "openrouter"
+    os.environ["SAQR_OR_MODEL"] = HEADLINE_MODEL
+    return HEADLINE_MODEL
+
+
+def _tier_ready(tier: str) -> bool:
+    if tier == "flash":
+        return bool(os.environ.get("OPENROUTER_API_KEY"))
+    return bool(os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN") or os.environ.get("OPENROUTER_API_KEY"))
+
+
+def main(argv: list[str] | None = None) -> int:
     os.environ["SAQR_EFFORT"] = "medium"
     os.environ.setdefault("SAQR_CASES", "/var/saqr-corpus/e2e-cases")
     if not has_ai():
@@ -97,36 +121,66 @@ def main() -> int:
             file=sys.stderr,
         )
         return 2
+    args = list(sys.argv[1:] if argv is None else argv)
+    tier = args[0] if args else os.environ.get("SAQR_E2E_TIER", "")
+    if tier not in ("flash", "headline"):
+        print("tier must be flash or headline. score.json was not written.", file=sys.stderr)
+        return 2
+    if not _tier_ready(tier):
+        print(f"{tier} has no key for its provider. score.json was not written.", file=sys.stderr)
+        return 2
+    model = _prepare_model(tier)
     manifest = _manifest()
-    detail_path = CORPUS / "e2e_detail.jsonl"
+    selected = manifest if tier == "flash" else headline_rows(manifest)
+    detail_name, done_name = output_paths(tier)
+    detail_path = CORPUS / detail_name
     done = _done(detail_path)
     with detail_path.open("a", encoding="utf-8") as fh:
         for cfg in CONFIGS:
-            for row in manifest:
+            for row in selected:
                 key = (cfg["id"], row["id"])
                 if key in done:
                     continue
                 photo = CORPUS / row["file"]
                 try:
                     packed = _one(photo, row, cfg)
-                except (OSError, ValueError) as exc:
-                    packed = {"id": row["id"], "config": cfg["id"], "stratum": row.get("stratum"), "error": str(exc)}
+                except Exception as exc:
+                    packed = {
+                        "id": row["id"], "config": cfg["id"], "stratum": row.get("stratum"),
+                        "error": f"{type(exc).__name__}: {exc}",
+                    }
+                packed["model"] = model
+                packed["tier"] = tier
                 fh.write(json.dumps(packed, ensure_ascii=False) + "\n")
                 fh.flush()
                 done.add(key)
     detail = [json.loads(line) for line in detail_path.read_text(encoding="utf-8").splitlines() if line.strip()]
-    need = len(manifest) * len(CONFIGS)
+    need = len(selected) * len(CONFIGS)
     if len(detail) < need:
-        print(f"incomplete {len(detail)}/{need}. score.json was not written.", file=sys.stderr)
+        print(f"incomplete {len(detail)}/{need}. {done_name} was not written.", file=sys.stderr)
         return 2
     result = aggregate(detail)
-    result["n_manifest"] = len(manifest)
+    result["tier"] = tier
+    result["model"] = model
+    result["n_manifest"] = len(selected)
+    result["n_corpus"] = len(manifest)
     result["by_stratum_manifest"] = {}
-    for row in manifest:
+    for row in selected:
         result["by_stratum_manifest"][row.get("stratum") or ""] = result["by_stratum_manifest"].get(row.get("stratum") or "", 0) + 1
-    out = CORPUS / "score.json"
+    if tier == "flash":
+        result["what"] = (
+            "Harness check on z-ai/glm-5.3-flash. Not the product number. "
+            "score.json is the headline tier on anthropic/claude-opus-5.5."
+        )
+    else:
+        result["what"] = (
+            "Headline end-to-end agent loop on anthropic/claude-opus-5.5, stratified subset. "
+            "Not a GeoCLIP-only prior score. Not the flash model. "
+            "OR_DEFAULT is not re-ranked from a partial file."
+        )
+    out = CORPUS / done_name
     out.write_text(json.dumps(result, indent=1), encoding="utf-8")
-    print(json.dumps({"n_manifest": len(manifest), "configs": list(result["configs"])}))
+    print(json.dumps({"tier": tier, "model": model, "n": len(selected), "file": done_name}))
     return 0
 
 

@@ -20,6 +20,7 @@ from . import cases
 from . import openrouter as OR
 from .config import (CASES_DIR, GEOINT, OR_DEFAULT, ROOT, SCRIPTS, UV, WEB_DIR, engine_label, load_dotenv,
                      model_name, provider)
+from .limits import person_search_enabled
 
 load_dotenv()
 app = FastAPI(title="SAQR")
@@ -101,7 +102,8 @@ def status():
             "key_hint": _hint("OPENROUTER_API_KEY" if prov == "openrouter" else "ANTHROPIC_API_KEY") if prov else "",
             "keys": {"anthropic": _hint("ANTHROPIC_API_KEY"), "openrouter": _hint("OPENROUTER_API_KEY")},
             "or_model": os.environ.get("SAQR_OR_MODEL") or OR_DEFAULT, "cases_dir": str(CASES_DIR),
-            "geoint_ok": (SCRIPTS / "recon.py").exists(), "geoint_path": str(GEOINT), "uv_ok": bool(shutil.which(UV))}
+            "geoint_ok": (SCRIPTS / "recon.py").exists(), "geoint_path": str(GEOINT), "uv_ok": bool(shutil.which(UV)),
+            "person_search": person_search_enabled()}
 
 
 def _local_origin(request: Request) -> None:
