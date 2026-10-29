@@ -1,5 +1,7 @@
 #!/bin/sh
-# Linux and macOS setup. Windows keeps setup.bat. Same pins, CPU torch.
+# Linux and macOS setup. Windows keeps setup.bat. Same app pins.
+# torch/torchvision are the PyPI default wheels. That is the CUDA build, not a CPU index.
+# This script does not select a GPU. A machine without one still downloads the CUDA wheels.
 set -eu
 cd "$(dirname "$0")/.."
 

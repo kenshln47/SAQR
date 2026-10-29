@@ -25,6 +25,10 @@ dependencies = [
     "pyproj==3.8.0",
     "bd09convertor==0.0.3",
     "coordinatesconverter==0.1.5",
+    # Not in requirements.txt: setup.sh installs these itself. streetlevel is --no-deps there.
+    "torch==2.15.0",
+    "torchvision==0.29.2",
+    "streetlevel==0.12.13",
 ]
 
 [dependency-groups]
@@ -32,6 +36,28 @@ dev = ["pytest>=8", "ruff>=0.8"]
 
 [tool.uv]
 package = false
+
+# pyfrpc is Mapy.cz-only and does not build on Windows. setup.sh installs streetlevel with --no-deps.
+[[tool.uv.dependency-metadata]]
+name = "streetlevel"
+version = "0.12.13"
+requires-dist = [
+    "aiohttp",
+    "bd09convertor",
+    "coordinatesconverter",
+    "cython",
+    "numpy",
+    "pillow",
+    "protobuf>4",
+    "pycryptodome",
+    "pyequilib",
+    "pyexiv2",
+    "pyproj",
+    "pytest",
+    "pytest-asyncio",
+    "requests",
+    "scipy",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

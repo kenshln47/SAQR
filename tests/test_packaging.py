@@ -21,6 +21,18 @@ def test_requirements_are_the_pyproject_dependencies() -> None:
         assert pin in project, pin
 
 
+def test_lock_records_torch_and_streetlevel_without_pyfrpc() -> None:
+    lock = (ROOT / "uv.lock").read_text(encoding="utf-8")
+    assert 'name = "torch"' in lock
+    assert 'name = "streetlevel"' in lock
+    assert "pyfrpc" not in lock
+    workflow = (ROOT / ".github" / "workflows" / "test.yml").read_text(encoding="utf-8")
+    assert "torch" not in workflow
+    requirements = (ROOT / "requirements.txt").read_text(encoding="utf-8")
+    assert "torch==" not in requirements
+    assert "streetlevel==" not in requirements
+
+
 def test_shell_entrypoints_exist_and_bind_locally() -> None:
     setup = (ROOT / "scripts" / "setup.sh").read_text(encoding="utf-8")
     run = (ROOT / "scripts" / "run.sh").read_text(encoding="utf-8")
