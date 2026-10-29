@@ -14,9 +14,9 @@ def test_csp_allows_the_map_and_blocks_framing() -> None:
     assert "frame-ancestors 'none'" in policy
     assert "worker-src 'self' blob:" in policy
     assert "https://tiles.openfreemap.org" in policy
-    assert "https://gibs.earthdata.nasa.gov" in policy
+    assert "https://server.arcgisonline.com" in policy
     assert "https://nominatim.openstreetmap.org" in policy
+    assert "gibs.earthdata.nasa.gov" not in policy
     assert "basemaps.cartocdn.com" not in policy
     assert "fonts.googleapis.com" not in policy
-    assert "arcgisonline.com" not in policy
     assert "default-src 'self'" in policy

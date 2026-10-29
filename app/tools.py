@@ -80,7 +80,7 @@ def _ll(lat: float, lon: float) -> str:
 def recon(case: Case) -> ToolOut:
     """First local pass: metadata, OCR, reverse search, object crops, world prior."""
     args = [str(case.photo), "--out-dir", "recon", "--skip", recon_skip_arg()]
-    if not case.load().get("rev", False):
+    if not case.load().get("rev", True):
         args.append("--no-rev")
     rc, out = run_script(case, "recon.py", args, use_uv=True, timeout=1800)
     # recon.py --skip cannot drop StreetCLIP and keep GeoCLIP. Call GeoCLIP alone.
@@ -186,13 +186,13 @@ def streetview_sweep(case: Case, lat: float, lon: float, radius_m: int = 3000, p
                    is_error=rc != 0)
 
 
-def satellite(case: Case, lat: float, lon: float, zoom: int = 16, source: str = "google", size: int = 900) -> ToolOut:
+def satellite(case: Case, lat: float, lon: float, zoom: int = 18, source: str = "esri", size: int = 900) -> ToolOut:
     if not SAT_SOURCE.fullmatch(source or ""):
-        return ToolOut("unknown source: use google, google-hybrid, or bing. esri and wayback are not called", is_error=True)
+        return ToolOut("unknown source: use esri, google, google-hybrid, or bing. wayback is not called", is_error=True)
     blocked = satellite_block_reason(source)
     if blocked:
         return ToolOut(blocked, is_error=True)
-    zoom = int(min(max(zoom, 3), 20))
+    zoom = int(min(max(zoom, 3), 19 if source == "esri" else 20))
     pts = case.dir / "work" / f"pt_{int(time.time() * 1000)}.json"
     pts.parent.mkdir(exist_ok=True)
     pts.write_text(json.dumps({"camera": [lat, lon]}), encoding="utf-8")
@@ -202,7 +202,8 @@ def satellite(case: Case, lat: float, lon: float, zoom: int = 16, source: str = 
     img = case.dir / "work" / name
     if rc != 0 or not img.exists():
         return ToolOut(f"satellite failed: {_tail(out, 1200)}", is_error=True)
-    return ToolOut(f"satellite {source} z{zoom} centred on {lat:.5f}, {lon:.5f}",
+    credit = " Esri, Maxar, Earthstar Geographics, and the GIS User Community." if source == "esri" else ""
+    return ToolOut(f"satellite {source} z{zoom} centred on {lat:.5f}, {lon:.5f}.{credit}",
                    [(img, f"Satellite ({source}, zoom {zoom}) at {lat:.5f}, {lon:.5f}")])
 
 

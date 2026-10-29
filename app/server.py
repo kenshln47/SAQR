@@ -29,16 +29,16 @@ MODES = {"region", "street", "private", "verify", "car", "person", "plate"}
 MAX_UPLOAD = 40 * 1024 * 1024
 BOARD = CASES_DIR / "saqr_board.json"
 PIN_KINDS = {"place", "camera", "note"}
-# Hosts the page actually calls: OpenFreeMap tiles/glyphs/sprites, NASA GIBS raster, Nominatim search.
+# Hosts the page actually calls: OpenFreeMap tiles/glyphs/sprites, Esri World Imagery, Nominatim search.
 # worker-src blob: is MapLibre's worker. wasm-unsafe-eval is the RTL plugin. style-src keeps
 # 'unsafe-inline' because the HUD writes style attributes. frame-ancestors stays none.
 CONTENT_SECURITY_POLICY = (
     "default-src 'self'; "
     "script-src 'self' 'wasm-unsafe-eval'; "
     "style-src 'self' 'unsafe-inline'; "
-    "img-src 'self' data: blob: https://tiles.openfreemap.org https://gibs.earthdata.nasa.gov; "
+    "img-src 'self' data: blob: https://tiles.openfreemap.org https://server.arcgisonline.com; "
     "font-src 'self'; "
-    "connect-src 'self' https://tiles.openfreemap.org https://gibs.earthdata.nasa.gov https://nominatim.openstreetmap.org; "
+    "connect-src 'self' https://tiles.openfreemap.org https://server.arcgisonline.com https://nominatim.openstreetmap.org; "
     "worker-src 'self' blob:; "
     "child-src blob:; "
     "frame-ancestors 'none'; "
@@ -222,7 +222,7 @@ def _new(name: str, data: bytes, mode: str, **extra) -> dict:
 
 @app.post("/api/cases")
 async def new_case(request: Request, photo: UploadFile | None = File(None), mode: str = Form("region"),
-                   rev: bool = Form(False), query: str = Form("")):
+                   rev: bool = Form(True), query: str = Form("")):
     _local_origin(request)
     if mode not in MODES:
         raise HTTPException(400, "unknown mode")
@@ -254,7 +254,7 @@ def rerun_case(cid: str, request: Request, body: dict = Body(default={})):
     except FileNotFoundError:
         raise HTTPException(409, "الصورة الأصلية مو موجودة، ما أقدر أعيد التحليل")
     return _new(name, raw, mode,
-                rev=bool(body.get("rev", d.get("rev", False))), rerun_of=old.id,
+                rev=bool(body.get("rev", d.get("rev", True))), rerun_of=old.id,
                 query=d.get("query", ""), text_only=bool(d.get("text_only")))
 
 

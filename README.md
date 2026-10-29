@@ -2,7 +2,7 @@
 
 Upload a still photo. The case is a folder on this computer. The run can put a pin on a map with a radius and file the images the tools return.
 
-What stays local: the app, the case files, metadata, error-level analysis, and the local prior when those scripts run. What leaves the machine, when you turn it on: the AI call if a key is set, the map and search hosts the tools use, and reverse image search (off unless you tick it). The map does not work offline.
+What stays local: the app, the case files, metadata, error-level analysis, and the local prior when those scripts run. What leaves the machine: the AI call if a key is set, the map and search hosts the tools use, and reverse image search unless this browser stored it off. The map does not work offline.
 
 This is not a measured accuracy claim. There is no scored SAQR photo corpus. Comparison with Graylark Raven's public pages is [GAP.md](GAP.md). That file does not add a SAQR error number.
 
@@ -42,23 +42,23 @@ Without a key, region and street runs use local metadata, OCR, object detection,
 
 Find Region and Find Street use `SYSTEM` in `app/agent.py`. That text tells the model not to geolocate a private person's home, school, or routine, to stop at city level, and never to read a plate number.
 
-Private-place mode does not keep that stop. The prompt sent is `PRIVATE_NOTE` instead of `SYSTEM` (`H-PROMPT-01`). `PRIVATE_NOTE` refers to a city-level rule "above" that is not in the same message. It tells the model to pin a building when a listing or a text anchor matches, to match a school, to name a place from a routine photo, and that a family plate may be read and searched as an extra anchor. `listing_search` is a DuckDuckGo text query of `airbnb.com`, `aqar.fm`, `bayut.sa`, and `haraj.com.sa`. It is not a photo index of listings.
+Private-place mode does not keep that stop. The prompt sent is `PRIVATE_NOTE` instead of `SYSTEM`. `PRIVATE_NOTE` stands alone: it does not refer to a city-level rule that is not in the same message. It still tells the model it may pin a building when a listing or a text anchor matches, and that a school or a routine photo is in scope. A plate may be read as a location anchor. The prompt says not to guess an owner from it. `listing_search` is a DuckDuckGo text query of `airbnb.com`, `aqar.fm`, `bayut.sa`, and `haraj.com.sa`. It is not a photo index of listings.
 
-Person mode takes a photo and/or an email, a phone number, or a name. It uses web search and Gravatar, and it files a name, a role, and accounts when `file_person` is called. It needs an API key.
+Person mode takes a photo and/or an email, a phone number, or a name. It uses web search and Gravatar, and it files a name, a role, and accounts when `file_person` is called. `found` is only for a person the evidence ties to this photo, email, or phone. A same-name hit with no second tie is not `found`. It needs an API key.
 
-Plate mode reads the plate characters, names the vehicle, and searches that plate text. An owner name is filed only when a page shows one. It needs an API key.
+Plate mode reads the plate characters and names the vehicle. The prompt tells the model to leave the owner empty and not to search for one. It needs an API key.
 
 The car module's prompt says not to read the plate. Find Region and Find Street tell the model a plate counts only by style, colours, and country or region code.
 
-`B-PRIV-01` stays open. The contradiction is in the code: region and street stop at the city for a private person or a private home; private-place, person, and plate do not. Describing it here is the change. Those modules were not removed and were not extended.
+`B-PRIV-01` stays open. The contradiction is in the code: region and street stop at the city for a private person or a private home; private-place and person do not. Plate still reads the characters. The plate prompt no longer asks for an owner. Those modules were not given new sources.
 
 | Module | What the code does |
 |---|---|
 | تحديد المنطقة (Find Region) | Country / region / city and a radius. Private homes and private people stop at city level in this mode. |
 | تحديد الشارع (Find Street) | MegaLoc sweeps, terrain skyline, satellite tool. Same city-level stop for a private home. |
-| تحديد مكان خاص (Private place) | Separate prompt. Does not stop at the city. Can search listing text and pin a building when a listing or a text anchor matches. May read a plate. |
-| من هذا الشخص؟ (Who is this?) | Photo and/or email, phone, or name. Web search and Gravatar. Files a name, a role, and accounts. Needs an API key. |
-| لوحة السيارة (Plate) | Reads the characters, names the vehicle, searches that plate text. Owner name only when a page shows one. Needs an API key. |
+| تحديد مكان خاص (Private place) | Separate prompt. Does not stop at the city. Can search listing text and pin a building when a listing or a text anchor matches. May read a plate. Does not name an owner from it. |
+| من هذا الشخص؟ (Who is this?) | Photo and/or email, phone, or name. Web search and Gravatar. A same name is not a found person. Needs an API key. |
+| لوحة السيارة (Plate) | Reads the characters and names the vehicle. Does not guess or look up an owner. Needs an API key. |
 | التحقق من الصورة (Verify Image) | Metadata and error-level analysis always. With a key, one model reading: an assessment, two likelihoods, and signals. No named-generator list and no separate face-swap score. Without a key the assessment is inconclusive and the local checks still run. |
 | تحديد السيارة (Identify Car) | One make, model, year range, and body type. Not ten ranked candidates and not reference images. The prompt does not read the plate. Needs an API key. |
 | القضايا (Cases) | Cases on one map. Confirm writes `truth.json`. Possible and dismissed mark the pin and do not write or replace a truth. |
@@ -67,7 +67,7 @@ In a case: **stop** ends a run after the current step, **re-run** starts a new c
 
 ## Reverse image search
 
-"بحث عكسي" defaults to off for Find Region, Find Street, Private place, and Plate. Tick it only when the photo may leave this computer. It then uploads the photo to Yandex and Baidu. A case that already stored `rev: true` stays on, including on re-run, unless the re-run body says otherwise. A browser that already saved the checkbox as on keeps that choice.
+"بحث عكسي" defaults to on for a browser that has not stored a choice. The label says the photo goes to Yandex and Baidu, and to clear the box if the photo is sensitive. The checkbox is stored in this browser (`saqr.rev`). A stored off stays off. A case that stored `rev: false` stays off, including on re-run. A case that stored `rev: true` stays on.
 
 ## Case files
 
@@ -83,13 +83,13 @@ One user, on 127.0.0.1. No SAQR account. [Privacy](web/legal/privacy.html), [ter
 
 At most `SAQR_WORKERS` analyses run at once (default 2, cap 8). A further upload waits. The case panel shows turns, tool calls, and token totals when the provider reports them. The running transcript is cut to `SAQR_CONTEXT_TOKENS` (default 24000). An image counts as 1600 in that estimate. Recon text in the first prompt is cut to `SAQR_RECON_TOKENS` (default 8000). The estimate is 2 characters per token, not the provider's tokenizer. The panel adds the provider's own usage when a response includes it.
 
-The interface is a dark frosted-glass layout over MapLibre GL JS 4.7.1 (vendored in `web/vendor/`, BSD-3) and mapbox-gl-rtl-text (BSD-2, plus ICU) so Arabic map labels can be shaped. The style document is local (`web/vendor/ofm-dark.json`). Tiles, glyphs, and sprites are requested from `tiles.openfreemap.org` when the map is on screen. If that request fails, the map does not load; the rest of the app still runs. OpenFreeMap's own pages, fetched with the style, say commercial use is allowed, the service is as-is with no SLA, and offline downloads are capped. Attribution is drawn from their TileJSON (OpenFreeMap, OpenMapTiles, OpenStreetMap). The style's upstream design is the OpenMapTiles dark-matter style (BSD-3 code, CC-BY-4.0 design); the file in `web/vendor/` is the runtime JSON, not that source repo. A shaded Natural Earth raster in the style is public domain. Inter and IBM Plex Sans Arabic are vendored (`web/fonts/`, SIL OFL). The page does not request `fonts.googleapis.com`.
+The interface is a dark frosted-glass layout over MapLibre GL JS 4.7.1 (vendored in `web/vendor/`, BSD-3) and mapbox-gl-rtl-text (BSD-2, plus ICU) so Arabic map labels can be shaped. The style document is local (`web/vendor/ofm-dark.json`). Tiles, glyphs, and sprites are requested from `tiles.openfreemap.org` when the map is on screen. If that host fails or rate-limits, the map does not load and SAQR does not switch to another free tile host. The replacement is the operator's own tiles: either a paid vector-tile style or a self-hosted OpenMapTiles/Planetiler (or Protomaps) endpoint, written into that style file. See ADR-012. The rest of the app still runs. OpenFreeMap's own pages, fetched with the style, say commercial use is allowed, the service is as-is with no SLA, and offline downloads are capped. Attribution is drawn from their TileJSON (OpenFreeMap, OpenMapTiles, OpenStreetMap). The style's upstream design is the OpenMapTiles dark-matter style (BSD-3 code, CC-BY-4.0 design); the file in `web/vendor/` is the runtime JSON, not that source repo. A shaded Natural Earth raster in the style is public domain. Inter and IBM Plex Sans Arabic are vendored (`web/fonts/`, SIL OFL). The page does not request `fonts.googleapis.com`.
 
 ## Limits that are actually in the code
 
 - A tight point still needs an anchor (readable text, a distinctive skyline, a covered road). The region/street prompt says a generic landscape stays wide, and lookalike Gulf cities are not to be defaulted to Dubai.
 - Street-level search defaults to Mapillary. Google Street View, Google satellite tiles, and Apple, Bing, and Yandex panoramas each need their own key: `SAQR_GOOGLE_KEY` or `GOOGLE_MAPS_API_KEY`, `SAQR_APPLE_KEY`, `SAQR_BING_KEY`, `SAQR_YANDEX_KEY`. One Google key does not unlock the others. `streetview_near` and `streetview_views` call Google and refuse without that key.
-- The قمر صناعي toggle is NASA GIBS Blue Marble Next Generation, Web Mercator, max zoom 8. It is not Esri. The agent satellite tool does not call Esri or Wayback. Google satellite still needs a Google key. Bing satellite is still forwarded to GeoInt when the model asks for `bing`.
+- The قمر صناعي toggle is Esri World Imagery (`server.arcgisonline.com`, zoom 3–19). The map credits Esri, Maxar, Earthstar Geographics, and the GIS User Community. The agent `satellite` tool defaults to `esri` and clamps that source at zoom 19. Wayback is not called. Google satellite still needs a Google key. Bing satellite is still forwarded to GeoInt when the model asks for `bing`.
 - Verify does not name a generator and does not emit a separate face-swap score. Car is one vehicle object, not a ranked ten with reference photos. There is no video mode.
 - Each AI analysis spends provider credit. Find Street is allowed more tool use than Find Region.
 

@@ -26,13 +26,11 @@ def test_fonts_are_local_and_the_style_is_vendored() -> None:
     assert "BSD 3-Clause" in lic and "CC-BY 4.0" in lic
 
 
-def test_satellite_toggle_is_nasa_gibs() -> None:
+def test_satellite_toggle_is_esri_world_imagery() -> None:
     js = (ROOT / "web/app.js").read_text(encoding="utf-8")
-    assert "arcgisonline.com" not in js
-    url = (
-        "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/"
-        "BlueMarble_NextGeneration/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpeg"
-    )
-    assert url in js
-    assert "maxzoom: 8" in js
+    assert "server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" in js
+    assert "maxzoom: 19" in js
+    assert "Esri, Maxar, Earthstar Geographics, and the GIS User Community" in js
+    assert "gibs.earthdata.nasa.gov" not in js
+    assert "map.setMaxZoom(19)" in js
 

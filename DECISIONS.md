@@ -18,6 +18,10 @@ ADR-008. Setup clones https://github.com/marouane53/GeoInt.git when `scripts/rec
 
 ADR-009. The map style is the OpenFreeMap build of dark-matter, stored in the repo, not fetched from `basemaps.cartocdn.com`. Tiles stay on `tiles.openfreemap.org`. Their own page says commercial use is allowed. Fonts are the SIL OFL files in `web/fonts/`, not `fonts.googleapis.com`.
 
-ADR-010. The satellite toggle is NASA GIBS Blue Marble Next Generation, matrix `GoogleMapsCompatible_Level8`. Sentinel-2 cloudless on s2maps.eu is non-commercial for 2018–2024 and was not used. Esri World Imagery and Wayback are refused in the agent tool as well as removed from the map. Google satellite still needs its own key. Bing is unchanged.
+ADR-010. The satellite toggle was NASA GIBS Blue Marble Next Generation, matrix `GoogleMapsCompatible_Level8`. Sentinel-2 cloudless on s2maps.eu is non-commercial for 2018–2024 and was not used. That choice is superseded for the live imagery layer by ADR-011. Google satellite still needs its own key. Bing is unchanged.
+
+ADR-011. Esri World Imagery is the satellite layer again, on the map and as the agent tool default. Zoom is 3–19. Attribution is "Esri, Maxar, Earthstar Geographics, and the GIS User Community". Wayback stays refused. This is a gate (named source, zoom cap, attribution), not a deletion and not an unscoped Esri archive.
+
+ADR-012. If `tiles.openfreemap.org` fails or rate-limits, the map stops and the rest of SAQR keeps running. There is no automatic second free tile host. The replacement is explicit: edit `web/vendor/ofm-dark.json` so its sources point at a paid vector-tile endpoint or at a self-hosted OpenMapTiles/Planetiler or Protomaps server. Paid is the path when the operator will not run a tile server. Self-host is the path when tiles must not leave the machine. Neither is downloaded by setup.
 
 

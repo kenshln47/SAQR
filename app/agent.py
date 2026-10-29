@@ -49,21 +49,17 @@ Limits you must keep
 """
 
 PRIVATE_NOTE = """
+Private-place mode. This prompt stands alone. It does not include the region/street system text, and there is
+no city-level stop written above this line to relax. Region and street mode stop at the city for a private home
+or a private person. This mode does not.
 
-Private-place mode (this run)
-The "stop at city level" rule above is relaxed here. Start from the city, then climb only as far as the evidence:
-1. Text first: a shop sign next door, a street name plate, a building number, a delivery sticker, a mail envelope,
-   a school badge or gate sign. Every one of them is a search in the local language.
-2. Architecture plus a mapped footprint (satellite, OSM building outlines) for a detached house or a school block.
-3. Interiors: the view out of the window, the skyline, the neighbourhood layout, finishes and furniture.
-4. Reverse search and listing_search: an Airbnb, aqar.fm, Bayut or Haraj listing often carries the same photo,
-   the same window view and the address.
-Pin the building and set level="point" only when a listing or a text anchor ties that building to the photo.
-Otherwise file the best district and say plainly in the summary why the building could not be pinned.
-A school: geocode and osm_query (amenity=school) inside the city, then match badge, uniform, gate, fence and colours.
-A routine photo ("where does this person go every day"): name the place and, when it fits, the exact branch.
-The family car's plate number may be read and searched here as an extra anchor; do not lean on it alone.
-Never invent a building. An honest district beats a confident wrong door.
+Do not invent a tool result. If you did not run the tool, the claim is an unverified estimate.
+Do not invent a building. An honest district beats a wrong door.
+A plate may be read as a location anchor. Do not guess, infer, or name an owner from it.
+Pin the building and set level="point" only when a listing or a text anchor already ties that building to the photo.
+Otherwise file the best district and say why the building was not pinned.
+listing_search queries Airbnb, aqar.fm, Bayut, and Haraj by text. It is not a photo index.
+A school or a routine photo is still this mode: name the place the evidence supports, and do not invent the door.
 """
 
 MODE_HINT = {
@@ -90,7 +86,7 @@ TOOLS = [
                                                  "Also open: kartaview, panoramax. google, apple, bing and yandex are refused unless their own key is set."),
      "input_schema": {"type": "object", "properties": {"lat": NUM, "lon": NUM, "radius_m": {"type": "integer"},
                       "provider": {"type": "string"}}, "required": ["lat", "lon"], "additionalProperties": False}},
-    {"name": "satellite", "description": "Satellite tile mosaic centred on a point. google and google-hybrid need SAQR_GOOGLE_KEY or GOOGLE_MAPS_API_KEY. bing is the other source the tool will call. esri and wayback are refused. The map's own satellite toggle is a separate low-resolution NASA layer, not this tool.",
+    {"name": "satellite", "description": "Satellite tile mosaic centred on a point. Default source is esri (World Imagery, zoom 3-19, attribution Esri, Maxar, Earthstar Geographics, and the GIS User Community). google and google-hybrid need SAQR_GOOGLE_KEY or GOOGLE_MAPS_API_KEY. bing is the other source the tool will call. wayback is refused. The map toggle is this same Esri layer, not a separate low-resolution basemap.",
      "input_schema": {"type": "object", "properties": {"lat": NUM, "lon": NUM, "zoom": {"type": "integer"}, "source": {"type": "string"}},
                       "required": ["lat", "lon"], "additionalProperties": False}},
     {"name": "terrain_view", "description": "Render the elevation-model skyline seen from a camera point and heading, stacked over the photo for comparison.",
@@ -186,7 +182,7 @@ def _run_tool(case: Case, name: str, inp: dict) -> T.ToolOut:
     if name == "streetview_sweep":
         return T.streetview_sweep(case, inp["lat"], inp["lon"], inp.get("radius_m", 3000), inp.get("provider") or "mapillary")
     if name == "satellite":
-        return T.satellite(case, inp["lat"], inp["lon"], inp.get("zoom", 16), inp.get("source", "google"))
+        return T.satellite(case, inp["lat"], inp["lon"], inp.get("zoom", 18), inp.get("source", "esri"))
     if name == "terrain_view":
         return T.terrain_view(case, inp["lat"], inp["lon"], inp["heading"], inp.get("hfov", 70), inp.get("height_m", 2),
                               inp.get("range_m", 30000))
@@ -286,7 +282,7 @@ def finish(case: Case, status: str, text: str, error: str = "") -> None:
 
 def run_geolocate(case: Case, mode: str) -> None:
     try:
-        rev = case.load().get("rev", False)
+        rev = case.load().get("rev", True)
         case.update(status="recon", engine=engine_label() if has_ai() else "local")
         steps = "بيانات الملف · قراءة النص · كشف العناصر · توقع النماذج" + (" · بحث عكسي أونلاين (Yandex و Baidu)" if rev else "")
         case.emit("stage", stage="recon", text=f"الفحص الأولي: {steps}")

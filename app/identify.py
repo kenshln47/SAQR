@@ -82,6 +82,9 @@ Method
   A face alone identifies a public figure well, and a private person only if the photo is on the web.
 - Verification: an account counts only when the search result actually ties it to this person. Do not merge two people
   with the same name. Never present a guess as a fact.
+- found and same-name are different. Set found to true only when the photo, the email, or the phone ties to that
+  one person. A page that only shows the same name, with no second tie, is not found: put the name in unverified
+  and set found to false.
 
 Finish by calling file_person exactly once, even when the evidence is thin (say so in unverified).
 Write summary, role and every why in Gulf Arabic, concise. Handles and URLs stay as they are."""
@@ -94,10 +97,9 @@ Method
 2. Identify the vehicle from the grille, lamps, badges and body (make, model, year range).
 3. The plate style, colours and country code are location and era clues: private, commercial, taxi, diplomatic,
    export. Use web_lookup to confirm what the format means.
-4. Search the plate itself: the digits and letters together, and the digits with the vehicle. Cars appear in
-   marketplaces and forums with their plate.
-5. On the owner: in Saudi Arabia the owner's name is not public from the plate alone. Say so plainly, name the route
-   (Absher / Mojaz) when the country is Saudi, and only give an owner name when a listing or a page really shows one.
+4. Do not guess, infer, or search for an owner. Leave owner empty. owner_note says the characters were read and
+   the owner was not identified. Do not name a person from the plate. A marketplace hit, a same name, or a plate
+   format is not an owner.
 
 Never invent a character you cannot read; a partially read plate is still useful. Say which characters are certain.
 Finish by calling file_plate exactly once. Write summary, vehicle and owner_note in Gulf Arabic."""
@@ -295,7 +297,7 @@ def run_person(case: Case) -> None:
             case.emit("stage", stage="recon", text="إدخال نصي: نبحث مباشرة")
             recon_md = ""
         else:
-            rev = bool(d.get("rev", False))
+            rev = bool(d.get("rev", True))
             case.emit("stage", stage="recon", text="الفحص الأولي: بيانات الملف · قراءة النص" + (" · بحث عكسي" if rev else ""))
             rec = T.recon(case)
             for p, cap in rec.images:

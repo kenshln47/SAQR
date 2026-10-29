@@ -128,9 +128,9 @@ map.on("load", () => {
   $("#mapErr").classList.add("hidden");
   const layers = map.getStyle().layers;
   const firstSym = layers.find((l) => l.type === "symbol")?.id;
-  map.addSource("sat", { type: "raster", tileSize: 256, maxzoom: 8,
-    attribution: "NASA GIBS / ESDIS · Blue Marble Next Generation",
-    tiles: ["https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/BlueMarble_NextGeneration/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpeg"] });
+  map.addSource("sat", { type: "raster", tileSize: 256, maxzoom: 19,
+    attribution: "Esri, Maxar, Earthstar Geographics, and the GIS User Community",
+    tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"] });
   map.addLayer({ id: "sat", type: "raster", source: "sat", layout: { visibility: "none" }, paint: { "raster-brightness-max": 0.85 } }, firstSym);
   const b = layers.find((l) => l["source-layer"] === "buildings" || l["source-layer"] === "building");
   state.flatBuildings = layers.filter((l) => l["source-layer"] === b?.["source-layer"] && l.type === "fill").map((l) => l.id);
@@ -161,6 +161,7 @@ map.on("load", () => {
     } catch { /* layer uses an expression we leave alone */ }
   }
   ready = true;
+  map.setMaxZoom(19);
   applyLayers();
   renderRadii();
   renderMeasure();
@@ -1224,7 +1225,7 @@ function init() {
     state.mode = b.dataset.mode;
     $$(".mode").forEach((x) => x.classList.toggle("active", x === b)); updateRun();
   }));
-  $("#revOpt").checked = store.get("rev", false);
+  $("#revOpt").checked = store.get("rev", true);
   $("#revOpt").onchange = (e) => store.set("rev", e.target.checked);
   $("#queryInput").oninput = updateRun;
   $("#run").onclick = runCase;
