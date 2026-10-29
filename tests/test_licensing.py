@@ -8,6 +8,7 @@ from app.licensing import (
     nc_models_allowed,
     normalise_pano,
     pano_block_reason,
+    prior_followup_args,
     recon_skip_arg,
     satellite_block_reason,
 )
@@ -29,6 +30,18 @@ def test_nc_opt_in(monkeypatch: pytest.MonkeyPatch, value: str) -> None:
 def test_blank_opt_in_does_not_count(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("SAQR_ALLOW_NC_MODELS", "  ")
     assert nc_models_allowed() is False
+
+
+def test_commercial_followup_is_geoclip_only(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("SAQR_ALLOW_NC_MODELS", raising=False)
+    args = prior_followup_args("/tmp/photo.jpg")
+    assert args == ["/tmp/photo.jpg", "--out-dir", "recon/prior", "--models", "geoclip"]
+    assert args is not None and "streetclip" not in args
+
+
+def test_nc_opt_in_skips_the_geoclip_followup(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("SAQR_ALLOW_NC_MODELS", "1")
+    assert prior_followup_args("/tmp/photo.jpg") is None
 
 
 def test_default_panorama_is_mapillary() -> None:
@@ -56,8 +69,19 @@ def test_closed_panoramas_need_their_own_key(monkeypatch: pytest.MonkeyPatch) ->
 def test_google_satellite_is_keyed(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("SAQR_GOOGLE_KEY", raising=False)
     monkeypatch.delenv("GOOGLE_MAPS_API_KEY", raising=False)
+    monkeypatch.delenv("SAQR_BING_KEY", raising=False)
+    reason = satellite_block_reason("wayback:2020-01") or ""
+    assert "still refused" in reason
+    assert "not restored" in reason
     assert satellite_block_reason("esri") is None
+    assert satellite_block_reason("bing")
+    assert "SAQR_BING_KEY" in (satellite_block_reason("bing") or "")
     assert satellite_block_reason("google")
     assert satellite_block_reason("google-hybrid")
     monkeypatch.setenv("SAQR_GOOGLE_KEY", "paid-key")
     assert satellite_block_reason("google-hybrid") is None
+    assert satellite_block_reason("bing")
+    monkeypatch.setenv("SAQR_BING_KEY", "bing-key")
+    assert satellite_block_reason("bing") is None
+    assert satellite_block_reason("esri") is None
+    assert "not restored" in (satellite_block_reason("wayback:2020-01") or "")

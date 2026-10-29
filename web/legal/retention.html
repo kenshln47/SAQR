@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SAQR · retention</title>
+<link rel="stylesheet" href="/fonts.css">
+<link rel="stylesheet" href="/report.css">
+</head>
+<body>
+<main>
+<h1>SAQR · RETENTION</h1>
+<p dir="ltr">SAQR does not keep a copy of a case on a server of its own, because it has none. Retention is the disk on this computer, plus whatever a third party keeps after a call the operator chose to make.</p>
+
+<h2>على هذا الجهاز</h2>
+<p>القضية تبقى في مجلد القضايا (أو في <span dir="ltr">SAQR_CASES</span> إذا انضبط) إلى أن يحذفها المستخدم. الحذف من الواجهة ينقل المجلد إلى <span dir="ltr">_saqr_trash</span> داخل نفس المكان. ما ينمسح من القرص. <span dir="ltr">truth.json</span> ينكتب فقط عند تأكيد المحلل. «ممكن» و«استبعاد» ما يكتبان حقيقة ولا يستبدلانها.</p>
+
+<h2>عند غيرنا</h2>
+<ul>
+<li>Yandex و Baidu يستلمون الصورة فقط إذا البحث العكسي كان شغّال لتلك القضية. مدّة احتفاظهم عندهم، مو عند صقر.</li>
+<li>Anthropic أو OpenRouter يستلمان ما يرسله التحليل إذا المفتاح موجود، بما فيه الصور اللي يشوفها النموذج. سياستهم عندهم.</li>
+<li>طلبات الخريطة ما ترسل صورة القضية. ترسل إحداثيات البلاطة إلى OpenFreeMap أو Esri World Imagery.</li>
+</ul>
+<p><a href="/legal/privacy.html">الخصوصية</a> · <a href="/legal/terms.html">الشروط</a></p>
+</main>
+</body>
+</html>

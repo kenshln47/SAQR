@@ -24,7 +24,7 @@ from PIL import Image, ImageOps
 
 from .cases import Case   # importing cases registers the HEIC opener
 from .config import SCRIPTS, SECRET_ENV, UV, VENV_PY
-from .licensing import normalise_pano, pano_block_reason, recon_skip_arg, satellite_block_reason
+from .licensing import normalise_pano, pano_block_reason, prior_followup_args, recon_skip_arg, satellite_block_reason
 
 SAT_SOURCE = re.compile(r"(esri|google|google-hybrid|bing|wayback:\d{4}(-\d{2}){0,2})")
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) SAQR/1.0 (+local)"
@@ -83,15 +83,28 @@ def recon(case: Case) -> ToolOut:
     if not case.load().get("rev", True):
         args.append("--no-rev")
     rc, out = run_script(case, "recon.py", args, use_uv=True, timeout=1800)
+    # recon.py --skip cannot drop StreetCLIP and keep GeoCLIP. Call GeoCLIP alone.
+    follow = prior_followup_args(str(case.photo))
+    follow_note = ""
+    if follow:
+        frc, fout = run_script(case, "prior.py", follow, use_uv=True, timeout=1800)
+        if frc != 0:
+            follow_note = f"\n\nGeoCLIP prior failed (rc={frc}): {_tail(fout)}"
+            rc = rc or frc
+            out = (out + "\n" + fout).strip()
     md = case.dir / "work" / "recon" / "recon.md"
     text = md.read_text(encoding="utf-8") if md.exists() else f"recon failed (rc={rc}): {_tail(out)}"
+    prior_md = case.dir / "work" / "recon" / "prior" / "prior.md"
+    if prior_md.exists():
+        text += "\n\n" + prior_md.read_text(encoding="utf-8")
+    text += follow_note
     imgs = []
     sheet = case.dir / "work" / "recon" / "detect" / "detect_sheet.jpg"
     if sheet.exists():
         imgs.append((sheet, "Detected objects (signs, poles, plates, vehicles)"))
     pmap = case.dir / "work" / "recon" / "prior" / "prior_map.png"
     if pmap.exists():
-        imgs.append((pmap, "World-prior heat map (model ranking, not proof)"))
+        imgs.append((pmap, "World-prior heat map (GeoCLIP unless the non-commercial opt-in is on)"))
     return ToolOut(text, imgs, is_error=not md.exists())
 
 
@@ -173,13 +186,13 @@ def streetview_sweep(case: Case, lat: float, lon: float, radius_m: int = 3000, p
                    is_error=rc != 0)
 
 
-def satellite(case: Case, lat: float, lon: float, zoom: int = 16, source: str = "esri", size: int = 900) -> ToolOut:
+def satellite(case: Case, lat: float, lon: float, zoom: int = 18, source: str = "esri", size: int = 900) -> ToolOut:
     if not SAT_SOURCE.fullmatch(source or ""):
-        return ToolOut("unknown source: use esri, google, google-hybrid, bing or wayback:YYYY", is_error=True)
+        return ToolOut("unknown source: use esri, or google, google-hybrid, or bing with that source's key. wayback is not called", is_error=True)
     blocked = satellite_block_reason(source)
     if blocked:
         return ToolOut(blocked, is_error=True)
-    zoom = int(min(max(zoom, 3), 20))
+    zoom = int(min(max(zoom, 3), 19 if source == "esri" else 20))
     pts = case.dir / "work" / f"pt_{int(time.time() * 1000)}.json"
     pts.parent.mkdir(exist_ok=True)
     pts.write_text(json.dumps({"camera": [lat, lon]}), encoding="utf-8")
@@ -189,7 +202,8 @@ def satellite(case: Case, lat: float, lon: float, zoom: int = 16, source: str = 
     img = case.dir / "work" / name
     if rc != 0 or not img.exists():
         return ToolOut(f"satellite failed: {_tail(out, 1200)}", is_error=True)
-    return ToolOut(f"satellite {source} z{zoom} centred on {lat:.5f}, {lon:.5f}",
+    credit = " Esri, Maxar, Earthstar Geographics, and the GIS User Community." if source == "esri" else ""
+    return ToolOut(f"satellite {source} z{zoom} centred on {lat:.5f}, {lon:.5f}.{credit}",
                    [(img, f"Satellite ({source}, zoom {zoom}) at {lat:.5f}, {lon:.5f}")])
 
 

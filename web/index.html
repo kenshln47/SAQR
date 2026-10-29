@@ -6,8 +6,7 @@
 <meta name="color-scheme" content="dark">
 <title>SAQR · صقر</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%233d9dff'/%3E%3Cstop offset='1' stop-color='%230a6cff'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' rx='8' fill='url(%23g)'/%3E%3Cpath d='M16 6.5 25.5 16 16 25.5 6.5 16Z' fill='none' stroke='%23fff' stroke-width='2.2' stroke-linejoin='round'/%3E%3Ccircle cx='16' cy='16' r='2.6' fill='%23fff'/%3E%3C/svg%3E">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="fonts.css">
 <link rel="stylesheet" href="vendor/maplibre-gl.css">
 <link rel="stylesheet" href="style.css">
 </head>
@@ -129,7 +128,7 @@
     <div class="stage" data-s="analysis"><i></i>تحليل وتحقق</div>
     <div class="stage" data-s="done"><i></i>التقرير</div>
   </div>
-  <div class="turns hidden" id="turns"><div class="tbar"><i id="turnFill"></i></div><span class="mono" id="turnTxt"></span></div>
+  <div class="turns hidden" id="turns"><div class="tbar"><i id="turnFill"></i></div><span class="mono" id="turnTxt"></span><span class="mono" id="costTxt"></span></div>
   <div class="ptabs small">
     <button class="it-tab active" data-it="result">النتيجة</button>
     <button class="it-tab" data-it="feed">مباشر <span class="badge" id="feedN">0</span></button>
@@ -193,9 +192,9 @@
     <div class="modes">
       <button class="mode active" data-mode="region"><span data-i="globe"></span><b>تحديد المنطقة</b><small>دولة · مدينة · نطاق</small></button>
       <button class="mode" data-mode="street"><span data-i="pin"></span><b>تحديد الشارع</b><small>تحليل عميق · Street View</small></button>
-      <button class="mode" data-mode="private"><span data-i="home"></span><b>تحديد مكان خاص</b><small>بيت · مدرسة · شغل</small></button>
-      <button class="mode" data-mode="person"><span data-i="user"></span><b>من هذا الشخص؟</b><small>صورة · إيميل · جوال · اسم</small></button>
-      <button class="mode" data-mode="plate"><span data-i="car"></span><b>لوحة السيارة</b><small>قراءة اللوحة · المركبة</small></button>
+      <button class="mode" data-mode="private"><span data-i="home"></span><b>تحديد مكان خاص</b><small>إعلان يربط المبنى، وإلا المدينة</small></button>
+      <button class="mode" data-mode="person"><span data-i="user"></span><b>من هذا الشخص؟</b><small>لا يبحث إلا بـ SAQR_PERSON_SEARCH=1</small></button>
+      <button class="mode" data-mode="plate"><span data-i="car"></span><b>لوحة السيارة</b><small>قراءة اللوحة · بدون مالك</small></button>
       <button class="mode" data-mode="verify"><span data-i="shield"></span><b>التحقق من الصورة</b><small>تعديل · توليد بالذكاء</small></button>
       <button class="mode" data-mode="car"><span data-i="car"></span><b>هوية السيارة</b><small>الماركة · الموديل · السنة</small></button>
     </div>
@@ -263,8 +262,9 @@
       <p><b>الأدوات:</b> ضع دبوس لتعليم نقطة، وأداة القياس تحسب المسافة بين النقاط. <span class="mono">Esc</span> يرجعك لأداة التحديد ويبدأ قياس جديد.</p>
       <p><b>إيقاف وإعادة:</b> زر الإيقاف يوقف التحليل بعد الخطوة الحالية. زر الإعادة يحلل نفس الصورة من جديد بنوع ثاني أو بالنموذج اللي اخترته الحين، والقضية القديمة تبقى للمقارنة.</p>
       <p><b>مفتاح API:</b> بدونه يشتغل بالنماذج المحلية بس (دولة/منطقة تقريبية). من الإعدادات ⚙ اختر OpenRouter (أي نموذج: Claude أو GPT أو Gemini…) أو Anthropic مباشرة، والصق مفتاحك.</p>
-      <p><b>البحث العكسي:</b> لو تركته شغال، الصورة تنرسل لـ Yandex و Baidu. شيله من نافذة الإضافة للصور الحساسة.</p>
-      <p class="dim">ما يحدد بيوت أشخاص ولا هويات: يوقف على مستوى المدينة في الصور الخاصة. من لوحة السيارة يستخدم شكلها ورمز الدولة أو المنطقة بس، وما يقرأ رقمها ولا يبحث فيه.</p>
+      <p><b>البحث العكسي:</b> شغّال افتراضياً، وينحفظ اختيارك في هذا المتصفح. إذا بقي شغّال، الصورة تنرسل لـ Yandex و Baidu. شيل العلامة لو الصورة حساسة.</p>
+      <p class="dim">تحديد المنطقة وتحديد الشارع يوقفان عند المدينة إذا الصورة شخص أو بيت خاص. تحديد المكان الخاص يصعد بسلم الأدلة ويثبت المبنى فقط إذا إعلان ربط الصورة به، وإلا يوقف عند المدينة. «من هذا الشخص؟» لا يبحث إلا إذا ضُبط SAQR_PERSON_SEARCH=1. لوحة السيارة تقرأ الأحرف ولا تسجّل مالكاً.</p>
+      <p><a href="/legal/privacy.html">الخصوصية</a> · <a href="/legal/terms.html">الشروط</a> · <a href="/legal/retention.html">الاحتفاظ بالملفات</a></p>
     </div>
   </div>
 </div>

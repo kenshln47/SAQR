@@ -1,0 +1,10 @@
+.git
+.venv
+.env
+__pycache__
+**/__pycache__
+cases
+*_saqr-*
+_saqr_trash
+*.pyc
+.claude

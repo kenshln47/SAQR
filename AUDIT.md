@@ -61,6 +61,21 @@ Fix: default panorama provider `mapillary` (Kartaview and Panoramax stay selecta
 
 Effort: M. Verify: unit tests for the default provider and for the refusal when no key is set.
 
+Closed in `7018f5f` for the Google/Apple/Bing/Yandex gate. Esri was left as `H-ESRI-01` and closed later in `7e23e6a`.
+
+### [H-GEOCLIP-01] HIGH — skipping `prior` drops GeoCLIP (MIT), not only StreetCLIP
+
+`recon_skip_arg()` returns `calib,prior` whenever `SAQR_ALLOW_NC_MODELS` is unset (`app/licensing.py`). GeoInt `scripts/recon.py` runs `prior.py` as one step (`prior.py` default `--models streetclip,geoclip`). GeoCLIP is MIT. StreetCLIP is the only non-commercial weight in that step. The commercial skip removes both, so the no-key path has no local coordinate at all (`app/agent.py` errors when `prior.json` has no lat).
+
+What breaks: a licence fix shipped as a silent accuracy regression. Trigger: any commercial run, including one with an API key, because recon never writes `work/recon/prior/prior.json`.
+
+Fix: measure prior-off vs GeoCLIP-only vs StreetCLIP+GeoCLIP in phase 2. If the gap is material, buy a StreetCLIP licence or call `prior.py --models geoclip` and keep StreetCLIP out. Do not leave the full skip in place once that measurement exists.
+
+The commercial follow-up is now `prior.py --models geoclip` after `--skip calib,prior` (`app/licensing.py` `prior_followup_args`, `app/tools.py` `recon`). StreetCLIP still loads only when `SAQR_ALLOW_NC_MODELS=1`. That is the permissive swap, not a measurement. The corpus outside git is 240 photos: city 65, town 40, rural 40, gulf 40, interior 30, screenshot 25. `bench/run_e2e.py flash` would run every photo on `z-ai/glm-5.3-flash`. `bench/run_e2e.py headline` would run a stratified 50 on `anthropic/claude-opus-5.5` and only then write `score.json`. It did not run. `ANTHROPIC_API_KEY` and `OPENROUTER_API_KEY` in `.env` are empty. `score.json` was not written. A partial `geoclip_detail.jsonl` from the GeoCLIP-only scorer is not this score. `bench.py make-streetview` was not used. This finding stays open.
+
+Effort: M. Verify: a bench score with the three prediction files, and a commercial argv that still requests GeoCLIP. The argv check is in `tests/test_recon_followup.py`. The score file does not exist yet.
+
+
 ### [B-PRIV-01] BLOCKER — shipped modules contradict the published limits and identify private people
 
 README lines 87-91 say private homes stop at city level, and that a plate number is never read, searched, or recorded. The code does the opposite.
@@ -73,6 +88,8 @@ Fix that I will not do here: leave the modules untouched. Do not wire them into 
 
 Effort: not estimated. Verify: `git diff` on `app/identify.py`, `PRIVATE_NOTE`, and the person/plate UI is empty after later phases.
 
+The refusal-only close is withdrawn. Deleting the path was not a fix. The default still files `found: false` and does not search. `SAQR_PERSON_SEARCH=1` restores the previous person loop (model, web, Gravatar, recon). Private mode keeps the evidence ladder and may call `listing_search`. `private_final` keeps `level=point` only when `listing_tie` is true. Otherwise it stops at the city with a radius of at least 15 km. A school and a daily routine are not named. Plate mode still reads the characters. The owner field is cleared. The README states that default.
+
 ## HIGH
 
 ### [H-PROMPT-01] HIGH — private mode drops the geolocation system prompt
@@ -83,9 +100,9 @@ Effort: not estimated. Verify: `git diff` on `app/identify.py`, `PRIVATE_NOTE`, 
 
 Same assignment at `app/agent.py:447`. `PRIVATE_NOTE` says "the stop at city level rule above is relaxed" (`app/agent.py:54`) but `SYSTEM` is not included, so the method, the tool discipline, and the plate ban never reach the model. Trigger: mode `private`.
 
-Fix: not in the licence phase, and not by me if the fix is to make private-home targeting work better. Recorded so it is not mistaken for an intentional prompt.
+Fix: not in the licence phase, and not by concatenating `SYSTEM` onto `PRIVATE_NOTE`. That would hand the private-place mode the city stop and then tell it to ignore the city stop.
 
-Effort: S. Verify: unread until a later change; do not "fix" by concatenating the two prompts.
+`d97e0b3` rewrites the three prompts. `PRIVATE_NOTE` stands alone and no longer says "the rule above". The plate prompt says do not guess, infer, or search for an owner, and to leave owner empty. Person mode does not call the model: `run_person` files `found: false` and does not search. Private-place text stops at the city. `SYSTEM` is still not concatenated onto `PRIVATE_NOTE`. Plate mode still reads the characters. This finding is not "targeting removed".
 
 ### [H-SSE-01] HIGH — every stream re-reads the whole log
 
@@ -95,6 +112,8 @@ Fix (phase 3): in-memory ring plus an index, tail from `sent`.
 
 Effort: M. Verify: a test that appends N events and streams from index N-1 without asserting a full-file read in the hot path.
 
+Closed in `af60fae`.
+
 ### [H-LOAD-01] HIGH — `Case.load()` hits disk on every poll
 
 `load()` reads and parses `case.json` (`app/cases.py:81-87`). `cancelled()` and `running()` call it (`app/cases.py:140-144`). The agent calls `cancelled()` every turn (`app/agent.py:352-356`). `add_candidate` loads again (`app/cases.py:120-128`). Trigger: a 40-turn street run.
@@ -102,6 +121,8 @@ Effort: M. Verify: a test that appends N events and streams from index N-1 witho
 Fix (phase 3): cache the dict, invalidate on `_save`.
 
 Effort: S. Verify: a test that two `load()` calls after one `update` see the new field, and a counter shows one read.
+
+Closed in `0acb481`.
 
 ### [H-POOL-01] HIGH — one unbounded thread per case, subprocesses up to an hour
 
@@ -116,6 +137,8 @@ def _start(case: cases.Case, mode: str) -> None:
 Fix (phase 3): bounded executor and a per-case cost meter.
 
 Effort: M. Verify: the (N+1)th submission waits when the pool size is N.
+
+Closed in `3991a06`.
 
 ### [H-ID-01] HIGH — case id `.` and `..` pass the allowlist
 
@@ -133,6 +156,8 @@ Fix (phase 3, small enough to do with the id check whenever tests land): reject 
 
 Effort: S. Verify: `get("..")` is `None` even if a parent `case.json` exists.
 
+Closed in `93d0bb1`.
+
 ### [H-ESRI-01] HIGH — satellite basemap is keyless Esri World Imagery
 
 ```132:132:web/app.js
@@ -145,11 +170,15 @@ Fix: ship an allowed raster (or a keyed Esri style) and name it in `THIRD_PARTY.
 
 Effort: M. Verify: the satellite toggle URL is one we have a written right to call.
 
+Closed in `7e23e6a` by deleting the layer (NASA GIBS, native zoom 8, zoom 9 returned 400). That close is withdrawn. `d97e0b3` restores Esri World Imagery with the attribution string, clamps the tool and the map at zoom 19, and still refuses Wayback. Google and Google Hybrid still need a key. A headless Chromium session on 2026-10-29 toggled قمر صناعي, jumped to zoom 19 over Riyadh, and received HTTP 200 `image/jpeg` tiles from `server.arcgisonline.com`. `#mapErr` stayed hidden. ADR-011 records the gate.
+
 ### [H-NET-01] HIGH — "local" UI depends on Google Fonts and Carto
 
 `web/index.html:9-10` preconnects to `fonts.googleapis.com` and loads Inter and IBM Plex Sans Arabic from `fonts.googleapis.com`. The map style is `https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json` (`web/app.js:112`). Offline, the map errors and the type falls back. Every visit also contacts Google.
 
 Fix (phase 5 / packaging): vendor the two families and a style JSON. Effort: M.
+
+Closed in `13a4c1c`. Inter and IBM Plex Sans Arabic are SIL OFL files in `web/fonts/`. The style document is `web/vendor/ofm-dark.json`. Tiles, glyphs, and sprites still come from `tiles.openfreemap.org`. Their page says commercial use is allowed. The page does not call `fonts.googleapis.com` or `basemaps.cartocdn.com`.
 
 ### [H-RANK-01] HIGH — the default model is labelled "the best" against the table in the same file
 
@@ -162,7 +191,7 @@ Fix (phase 5 / packaging): vendor the two families and a style JSON. Effort: M.
 
 README repeats 10.9 km as 1st and 8.7 km as tied 1st, and says `google/gemini-4-argon` was not benchmarked (README lines 27-35). `OR_DEFAULT` is opus (`app/config.py:52`). I did not re-run GeoGuessBench. A lower median on the same table is already enough to drop the "الأفضل" tag until a re-rank exists.
 
-Fix (phase 2): re-measure and rank from that run. Effort: L.
+Fix (phase 2): re-measure and rank from that run. Effort: L. Still open in phase 7. The corpus is a local-prior photo set, not an LLM ranking, and there is no provider key. `OR_DEFAULT` was not changed.
 
 ## MEDIUM
 
@@ -172,31 +201,45 @@ Fix (phase 2): re-measure and rank from that run. Effort: L.
 
 Fix: per-case locks; do not hold the catalog lock during I/O. Effort: S. Phase 3.
 
+Closed in `d3e6562`.
+
 ### [M-IMPORT-01] MEDIUM — importing the package creates directories and rewrites cases
 
 `CASES_DIR.mkdir` runs at import (`app/config.py:38-39`). `cases.recover_stale()` runs at import of the server (`app/server.py:46`) and flips every `queued` / `recon` / `analysing` case to `error`. Trigger: `import app.server` in a test, or a second process started while a run is live.
 
 Fix: create the directory in `main()`, recover only from the process that owns the port. Effort: S. Phase 4 tests will trip this immediately.
 
+Closed in `93e3ee6`. Import does not create the directory and does not mark a live case failed. `main()` binds 127.0.0.1 first.
+
 ### [M-TEST-01] MEDIUM — no tests, no ruff config, no CI
 
 No `tests/`, no `pyproject.toml`, no workflow. `pytest` and `ruff` are not installed here. Phase definition of done cannot be met until they exist. Effort: M. Phase 4, with the minimum runner added as soon as phase 1 needs a green `pytest`.
+
+Closed in `88747fb`. The suite, `pyproject.toml`, and `.github/workflows/test.yml` (`dcd8ba2`) are in the tree. The new test fails if they disappear. The pytest job still installs pytest, ruff, and pillow only. A separate job installs CPU torch and imports it.
 
 ### [M-PKG-01] MEDIUM — Windows-only bootstrap
 
 `setup.bat` and `run.bat` are the only entrypoints. `setup.bat:6-9` assumes `uv`, Python 3.12, and a CUDA wheel URL. A Linux or macOS clone has no command. Effort: M. Phase 4.
 
+Closed in `c63e321`. `scripts/setup.sh` and `scripts/run.sh` are the Linux and macOS entrypoints. `uv.lock` matches the requirement pins. Torch is installed by the setup script, not by `requirements.txt`. The lock pins CPU torch. `setup.sh` uses that index unless `nvidia-smi -L` succeeds, then cu130. `setup.bat` still tries cu130 first (ADR-014).
+
 ### [M-GEOINT-01] MEDIUM — a fresh clone cannot geolocate
 
 `GEOINT` defaults to `~/.claude/skills/geoint` (`app/config.py:41-42`). `run_script` returns rc 127 if the script is missing (`app/tools.py:51-52`). The status endpoint reports `geoint_ok` (`app/server.py:72`) and nothing installs the skill. Effort: L. Phase 4.
+
+Closed in `d5414fd`. Setup clones the MIT skill when `scripts/recon.py` is missing and does not vendor it.
 
 ### [M-PRUNE-01] MEDIUM — context control is "keep 6 images" and a 20k-character cut
 
 `_prune_images(..., keep=6)` (`app/agent.py:183-194`). Recon is sliced `recon_md[:20000]` (`app/agent.py:349`) and person/plate recon `[:12000]` (`app/identify.py:302`, `app/identify.py:325`). Trigger: a sweep that returns several sheets, then later turns forget them. Effort: M. Phase 3.
 
+Closed in `b7786c1`. The transcript is cut to `SAQR_CONTEXT_TOKENS` (default 24000). Recon text is cut to `SAQR_RECON_TOKENS` (default 8000). An image counts as 1600 tokens. The line numbers above are the pre-fix citations.
+
 ### [M-REV-01] MEDIUM — reverse image search defaults on
 
 `rev: bool = Form(True)` (`app/server.py:193`). The checkbox is `checked` (`web/index.html:202`) and `store.get("rev", true)` (`web/app.js:1179`). The label does say the photo is sent to Yandex and Baidu. Trigger: Find Region with the default form. Effort: S. Phase 5 wants the disclosure kept; the default should be off for a commercial build.
+
+Closed in `584f03a`. The form, the checkbox, local storage, the agent, and the tool default to off. A stored `rev: true` stays on. The Yandex and Baidu sentence stays.
 
 ### [M-BING-01] MEDIUM — Apple, Bing, and Yandex panoramas are still one argument away
 
@@ -206,19 +249,27 @@ Tool text lists `google, apple, bing, yandex, mapillary, kartaview, panoramax` (
 
 `catalog()` calls `raise_for_status()` with no stale cache (`app/openrouter.py:40-43`). Settings and `/api/models` turn that into HTTP 502 (`app/server.py:142-143`, `app/server.py:157-160`). The agent calls `OR.reasoning` → `catalog()` inside a run (`app/openrouter.py:101-104`). Trigger: OpenRouter down mid-run. The run dies instead of skipping the reasoning parameter. Effort: S. Phase 3.
 
+Closed in `648b7bb`. A failed refresh keeps the previous list. With no list, `reasoning()` omits the parameter. Settings still reports the error when there is nothing cached.
+
 ## LOW
 
 ### [L-PHOTO-01] LOW — `Case.photo` indexes an empty glob
 
 `app/cases.py:70-72` returns `files[0]` with no empty check. Trigger: `original/` deleted by hand, then rerun (`app/server.py:219` calls `old.photo.read_bytes()`). Effort: S.
 
+Closed in `8770f47`. `Case.photo` raises `FileNotFoundError`. Rerun returns 409.
+
 ### [L-REPORT-FONT] LOW — the HTML report names a font it does not load
 
 `app/report.py:155` sets `IBM Plex Sans Arabic` but the report document has no stylesheet link. The UI page loads the font from Google; the report does not. Effort: S.
 
+Closed in `cbaf91f`. The report links `/fonts.css` and `/report.css`. There is no inline style block.
+
 ### [L-CSP-01] LOW — CSP is only `frame-ancestors 'none'`
 
 `app/server.py:42`. Scripts are same-origin, so this is defence-in-depth, not a hole by itself. Effort: S.
+
+Closed in `dda66a8`. The policy is `default-src 'self'`, with a blob worker, wasm for the RTL plugin, and the three hosts the page still calls. `frame-ancestors` stays `none`. `style-src` keeps `'unsafe-inline'` because the HUD writes style attributes.
 
 ### [L-UTC-01] LOW — the clock is UTC
 
@@ -230,3 +281,7 @@ Tool text lists `google, apple, bing, yandex, mapillary, kartaview, panoramax` (
 - Did not read `web/vendor/maplibre-gl.js` or `mapbox-gl-rtl-text.js` past the licence headers. MapLibre header says 3-Clause BSD, `v4.7.1`. rtl-text file is the BSD-2 notice plus ICU.
 - Did not execute GeoGuessBench, and did not open the geoint `recon.py` / `gsv.py` / `pano.py` sources (not on disk, not in this repo).
 - Did not change code. Phase 0 is the two markdown files only.
+
+## Phase 6 note (2026-10-29)
+
+`GAP.md` (`1451911`) and the README rewrite (`aac3f09`) do not close `B-PRIV-01`, `H-PROMPT-01`, `H-GEOCLIP-01`, or `H-RANK-01`. The README states the contradiction. The identity, plate, and private-place code was not changed in that pass. Line numbers in the findings above are from the phase 0 tree and were not re-audited here.

@@ -109,7 +109,7 @@ function toast(msg, kind = "") {
 // joins and orders Arabic letters in map labels; without it they draw unjoined and left-to-right
 maplibregl.setRTLTextPlugin(new URL("vendor/mapbox-gl-rtl-text.js", location.href).href, false)?.catch?.(() => {});
 const map = new maplibregl.Map({
-  container: "map", style: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
+  container: "map", style: "vendor/ofm-dark.json",
   center: [30, 24], zoom: 1.7, maxPitch: 75, attributionControl: { compact: true }, dragRotate: true,
 });
 let ready = false;
@@ -120,7 +120,7 @@ const arabicFirst = (tf) => (tf[0] === "step" && Array.isArray(tf[1]) && tf[1][0
   : ["coalesce", ["get", "name:ar"], tf]);
 map.on("error", () => {
   if (ready) return;   // a missing tile later is normal; only a style that never loads needs a word
-  $("#mapErr").textContent = "الخريطة ما تحملت: تحتاج إنترنت (CARTO و Esri). باقي صقر يشتغل عادي.";
+  $("#mapErr").textContent = "الخريطة ما تحملت: تحتاج إنترنت (OpenFreeMap). باقي صقر يشتغل عادي.";
   $("#mapErr").classList.remove("hidden");
 });
 map.on("load", () => {
@@ -128,7 +128,8 @@ map.on("load", () => {
   $("#mapErr").classList.add("hidden");
   const layers = map.getStyle().layers;
   const firstSym = layers.find((l) => l.type === "symbol")?.id;
-  map.addSource("sat", { type: "raster", tileSize: 256, maxzoom: 19, attribution: "Esri, Maxar, Earthstar Geographics",
+  map.addSource("sat", { type: "raster", tileSize: 256, maxzoom: 19,
+    attribution: "Esri, Maxar, Earthstar Geographics, and the GIS User Community",
     tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"] });
   map.addLayer({ id: "sat", type: "raster", source: "sat", layout: { visibility: "none" }, paint: { "raster-brightness-max": 0.85 } }, firstSym);
   const b = layers.find((l) => l["source-layer"] === "buildings" || l["source-layer"] === "building");
@@ -160,6 +161,7 @@ map.on("load", () => {
     } catch { /* layer uses an expression we leave alone */ }
   }
   ready = true;
+  map.setMaxZoom(19);
   applyLayers();
   renderRadii();
   renderMeasure();
@@ -267,6 +269,10 @@ function renderCaseMarkers() {
   });
 }
 
+function reviewWord(v) {
+  return v === "confirmed" ? "مؤكّد" : v === "possible" ? "ممكن" : v === "dismissed" ? "مستبعد" : "";
+}
+
 function renderActiveMarkers() {
   clear(state.activeMarkers);
   state.cands.filter((c) => okLL(c.lat, c.lon)).forEach((c) => {
@@ -275,7 +281,11 @@ function renderActiveMarkers() {
     state.activeMarkers.push(marker(el, c.lat, c.lon, `<div class="pop" dir="rtl"><b>${esc(c.label)}</b>
       <div class="c">${(+c.lat).toFixed(5)}, ${(+c.lon).toFixed(5)}</div>
       <div class="st ${model ? "low" : "medium"}"><i></i>${model ? "تخمين نماذج محلية" : "مرشح"} · ${Math.round((+c.confidence || 0) * 100)}% · ± ${esc(c.radius_km)} كم</div>
-      <div class="why">${esc(c.reason)}</div></div>`));
+      <div class="why">${esc(c.reason)}</div>
+      <div class="row"><button type="button" class="yes" data-review="confirmed" data-n="${Number(c.n)}">تأكيد</button>
+        <button type="button" class="mid" data-review="possible" data-n="${Number(c.n)}">ممكن</button>
+        <button type="button" class="no" data-review="dismissed" data-n="${Number(c.n)}">استبعاد</button></div>
+      ${c.review ? `<div class="why">${esc(reviewWord(c.review.verdict))}</div>` : ""}</div>`));
   });
   renderRadii();
 }
@@ -578,10 +588,17 @@ function updateEngine(s) {
   if (!s.claude && state.mode === "car") $('.mode[data-mode="region"]').click();
   $("#modeHint").classList.toggle("hidden", s.claude);
   $('#rerunMenu [data-mode="car"]').disabled = !s.claude;
-  [["person", "صورة · إيميل · جوال · اسم"], ["plate", "قراءة اللوحة · المركبة"]].forEach(([m, t]) => {
-    const b = $(`.mode[data-mode="${m}"]`); b.classList.toggle("needkey", !s.claude); $("small", b).textContent = s.claude ? t : "يحتاج مفتاح API";
-    $(`#rerunMenu [data-mode="${m}"]`).disabled = !s.claude;
-  });
+  const personOn = !!s.person_search;
+  const personBtn = $('.mode[data-mode="person"]');
+  personBtn.classList.toggle("needkey", personOn && !s.claude);
+  $("small", personBtn).textContent = personOn
+    ? (s.claude ? "بحث ويب · Gravatar" : "يحتاج مفتاح API")
+    : "لا يبحث إلا بـ SAQR_PERSON_SEARCH=1";
+  $('#rerunMenu [data-mode="person"]').disabled = personOn && !s.claude;
+  const plateBtn = $('.mode[data-mode="plate"]');
+  plateBtn.classList.toggle("needkey", !s.claude);
+  $("small", plateBtn).textContent = s.claude ? "قراءة اللوحة · بدون مالك" : "يحتاج مفتاح API";
+  $('#rerunMenu [data-mode="plate"]').disabled = !s.claude;
   $("#rerunEng").textContent = s.ready ? `بيستخدم ${s.label}` : "بدون مفتاح: النماذج المحلية بس";
   if (s.cases_dir) {
     $("#helpDir").textContent = s.cases_dir;
@@ -756,6 +773,10 @@ function showFinal(f) {
         <button id="goto">${ICON.target}انتقل</button></span></div>
       <div class="meta"><span class="tag ${cls(f.confidence)}"><i></i>${esc(CONF_AR[f.confidence] || f.confidence)}</span>
         <span class="tag">${esc(LEVEL_AR[f.level] || f.level || "")}</span><span class="tag">± ${esc(f.radius_km)} كم</span></div>
+      <div class="review-row"><button type="button" class="yes" data-review="confirmed">تأكيد</button>
+        <button type="button" class="mid" data-review="possible">ممكن</button>
+        <button type="button" class="no" data-review="dismissed">استبعاد</button></div>
+      ${f.review ? `<p class="dim">${esc(reviewWord(f.review.verdict))}${f.review.verdict === "confirmed" ? " كنقطة صحيحة" : ""}</p>` : ""}
       <p dir="auto">${esc(f.summary)}</p>
       ${list("الأدلة الحاسمة", f.clues)}
       ${list("احتمالات ثانية", (f.alternatives || []).map((a) => `${a.place}: ${a.why}`))}
@@ -797,6 +818,22 @@ function showFinal(f) {
   }
 }
 
+function costLine(cost) {
+  if (!cost) return "";
+  const bits = [];
+  if (cost.turns) bits.push(`${cost.turns} جولات`);
+  if (cost.tools) bits.push(`${cost.tools} أداة`);
+  const tokens = (+cost.prompt_tokens || 0) + (+cost.completion_tokens || 0);
+  if (tokens) bits.push(`${tokens} رمز`);
+  return bits.join(" · ");
+}
+function paintCost(cost) {
+  const el = $("#costTxt");
+  if (!el) return;
+  const line = costLine(cost);
+  el.textContent = line;
+  el.classList.toggle("hidden", !line);
+}
 function handle(ev, live) {
   switch (ev.kind) {
     case "stage":
@@ -825,6 +862,18 @@ function handle(ev, live) {
       feed("candidate", `مرشح #${ev.candidate.n}`, `${ev.candidate.label} — ${ev.candidate.reason}`);
       if (live && !state.final) flyTo(ev.candidate.lat, ev.candidate.lon, ev.candidate.radius_km);
       break;
+    case "review": {
+      if (ev.n) {
+        const cand = state.cands.find((x) => x.n === ev.n);
+        if (cand) cand.review = { verdict: ev.verdict };
+        renderActiveMarkers();
+      } else if (state.final) {
+        state.final.review = { verdict: ev.verdict };
+        showFinal(state.final);
+      }
+      feed("log", "مراجعة", ev.verdict === "confirmed" ? "تأكيد المحلل" : ev.verdict === "possible" ? "ممكن، بدون نقطة صحيحة" : "استبعاد المحلل");
+      break;
+    }
     case "evidence": addEvidence(ev.path, ev.caption); break;
     case "final": {
       showFinal(ev.final);
@@ -833,6 +882,10 @@ function handle(ev, live) {
       if (live && ev.final.lat !== undefined) flyTo(ev.final.lat, ev.final.lon, ev.final.radius_km);
       break;
     }
+    case "cost":
+      paintCost(ev.cost);
+      $("#turns").classList.remove("hidden");
+      break;
     case "error":
       feed("error", "خطأ", ev.text);
       if (!state.final) $("#result").innerHTML = errCard(ev.text);
@@ -877,6 +930,8 @@ function resetIntel() {
   ["#iReport", "#iStop", "#iRerun", "#rerunMenu", "#turns"].forEach((s) => $(s).classList.add("hidden"));
   $("#iStop").disabled = false;
   $("#caseNotes").value = ""; $("#caseNotesState").textContent = "";
+  const costEl = $("#costTxt");
+  if (costEl) { costEl.textContent = ""; costEl.classList.add("hidden"); }
 }
 
 async function openCase(id) {
@@ -901,7 +956,8 @@ async function openCase(id) {
   $("#iMode").textContent = MODE_LABEL[c.mode] || c.mode;
   $("#iTime").textContent = (c.created || "").slice(0, 16).replace("T", " ");
   $("#iEngine").textContent = c.engine ? `المحرك: ${c.engine}${c.rerun_of ? " · إعادة تحليل" : ""}` : "";
-  $("#rerunRev").checked = c.rev !== false && ["region", "street", "private", "plate"].includes(c.mode);   // only a choice the user made carries over
+  paintCost(c.cost);
+  $("#rerunRev").checked = c.rev === true && ["region", "street", "private", "plate"].includes(c.mode);   // only an explicit yes carries over
   const { events = [], ...meta } = c;
   if (!state.cases.some((x) => x.id === id)) state.cases.unshift(meta);
   renderSources(); renderCaseMarkers();
@@ -1245,7 +1301,7 @@ function init() {
   });
 
   const fromHash = () => {
-    const m = location.hash.match(/case=([\w.-]+)/);
+    const m = location.hash.match(/case=([A-Za-z0-9][\w.-]*)/);
     if (m && m[1] !== state.active) openCase(m[1]);
     const v = location.hash.match(/view=(-?[\d.]+),(-?[\d.]+),([\d.]+)(?:,([\d.]+))?/);
     if (v) map.jumpTo({ center: [+v[2], +v[1]], zoom: +v[3], pitch: +(v[4] || 0), bearing: v[4] ? -20 : 0 });
@@ -1257,3 +1313,33 @@ function init() {
   applyLayers();
 }
 init();
+
+document.addEventListener("click", async (ev) => {
+  const btn = ev.target.closest?.("[data-review]");
+  if (!btn || !state.active) return;
+  ev.preventDefault();
+  ev.stopPropagation();
+  const verdict = btn.dataset.review;
+  const body = { verdict };
+  if (btn.dataset.n) body.n = +btn.dataset.n;
+  btn.disabled = true;
+  try {
+    const r = await fetch(`/api/cases/${encodeURIComponent(state.active)}/review`, {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+    });
+    if (!r.ok) { toast("ما انحفظت المراجعة", "err"); return; }
+    if (body.n) {
+      const cand = state.cands.find((x) => x.n === body.n);
+      if (cand) cand.review = { verdict };
+      renderActiveMarkers();
+    } else if (state.final) {
+      state.final.review = { verdict };
+      showFinal(state.final);
+    }
+    toast(verdict === "confirmed" ? "انحفظت كنقطة صحيحة" : verdict === "possible" ? "انحفظ كممكن، بدون نقطة صحيحة" : "تم الاستبعاد");
+  } catch {
+    toast("ما قدرت أوصل لصقر", "err");
+  } finally {
+    btn.disabled = false;
+  }
+});

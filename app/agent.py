@@ -12,6 +12,8 @@ from . import openrouter as OR
 from . import tools as T
 from .cases import Case
 from .config import EFFORT, MAX_TURNS, engine_label, has_ai, model_name, provider
+from .context import clip_text, context_token_budget, prune_messages, recon_token_budget, usage_delta
+from .limits import listing_block, private_final
 from .report import write_report
 
 SYSTEM = """You are SAQR, a photo geolocation analyst running on the user's own computer.
@@ -48,29 +50,29 @@ Limits you must keep
 """
 
 PRIVATE_NOTE = """
+Private-place mode. This prompt stands alone. It does not include the region/street system text.
 
-Private-place mode (this run)
-The "stop at city level" rule above is relaxed here. Start from the city, then climb only as far as the evidence:
-1. Text first: a shop sign next door, a street name plate, a building number, a delivery sticker, a mail envelope,
-   a school badge or gate sign. Every one of them is a search in the local language.
-2. Architecture plus a mapped footprint (satellite, OSM building outlines) for a detached house or a school block.
-3. Interiors: the view out of the window, the skyline, the neighbourhood layout, finishes and furniture.
-4. Reverse search and listing_search: an Airbnb, aqar.fm, Bayut or Haraj listing often carries the same photo,
-   the same window view and the address.
-Pin the building and set level="point" only when a listing or a text anchor ties that building to the photo.
-Otherwise file the best district and say plainly in the summary why the building could not be pinned.
-A school: geocode and osm_query (amenity=school) inside the city, then match badge, uniform, gate, fence and colours.
-A routine photo ("where does this person go every day"): name the place and, when it fits, the exact branch.
-The family car's plate number may be read and searched here as an extra anchor; do not lean on it alone.
-Never invent a building. An honest district beats a confident wrong door.
+Keep the evidence ladder. Start from the city, then climb only as far as the evidence:
+1. Text first: a shop sign next door, a street name, a building number, a delivery sticker. Search each one in the local language.
+2. Architecture plus a mapped footprint (satellite, OSM building outlines).
+3. Interiors: the view out of the window, the skyline, the neighbourhood, finishes and furniture.
+4. listing_search: an Airbnb, aqar.fm, Bayut, or Haraj listing may carry the same photo and an address.
+
+Set level to point and set listing_tie to true only when a listing ties that building to the photo.
+Without that listing tie, it stops at the city. Do not file a street or a point. Do not set listing_tie.
+Do not name a school. Do not name a daily routine.
+Do not invent a tool result. If you did not run the tool, the claim is an unverified estimate.
+Do not invent a building.
+Do not guess, infer, or name an owner. A plate is not an owner lookup.
 """
 
 MODE_HINT = {
     "region": "Mode: FIND REGION (quick). Aim for country, region and city with an honest radius. Use at most ~12 tool calls.",
     "street": ("Mode: FIND STREET (deep). Push to the street or camera point when the evidence allows: narrow, then "
                "street-level checks, sweeps, terrain and satellite evidence. Stop when one strong constraint is confirmed, or two weaker ones agree. If neither holds, still file the best city or district with a wider radius."),
-    "private": ("Mode: PRIVATE PLACE (بيت · مدرسة · شغل · روتين). The subject is a private home, a school or ordinary "
-                "people, so push past the city when the evidence allows. Same tools, deeper ladder."),
+    "private": ("Mode: PRIVATE PLACE. Climb the evidence ladder. listing_search is allowed. "
+                "File level point only when a listing ties the building, and set listing_tie true. "
+                "Otherwise stop at the city. Do not name a school or a routine."),
 }
 
 NUM = {"type": "number"}
@@ -89,7 +91,7 @@ TOOLS = [
                                                  "Also open: kartaview, panoramax. google, apple, bing and yandex are refused unless their own key is set."),
      "input_schema": {"type": "object", "properties": {"lat": NUM, "lon": NUM, "radius_m": {"type": "integer"},
                       "provider": {"type": "string"}}, "required": ["lat", "lon"], "additionalProperties": False}},
-    {"name": "satellite", "description": "Satellite tile mosaic centred on a point. Sources: esri, bing, wayback:YYYY. google and google-hybrid need SAQR_GOOGLE_KEY or GOOGLE_MAPS_API_KEY.",
+    {"name": "satellite", "description": "Satellite tile mosaic centred on a point. Default source is esri (World Imagery, zoom 3-19, attribution Esri, Maxar, Earthstar Geographics, and the GIS User Community). google and google-hybrid need SAQR_GOOGLE_KEY or GOOGLE_MAPS_API_KEY. bing needs SAQR_BING_KEY. A Google key does not unlock Bing. wayback is still refused and was not restored. The map toggle is this same Esri layer, not a separate low-resolution basemap.",
      "input_schema": {"type": "object", "properties": {"lat": NUM, "lon": NUM, "zoom": {"type": "integer"}, "source": {"type": "string"}},
                       "required": ["lat", "lon"], "additionalProperties": False}},
     {"name": "terrain_view", "description": "Render the elevation-model skyline seen from a camera point and heading, stacked over the photo for comparison.",
@@ -118,7 +120,8 @@ TOOLS = [
          "alternatives": {"type": "array", "items": {"type": "object", "properties": {
              "place": {"type": "string"}, "lat": NUM, "lon": NUM, "why": {"type": "string"}},
              "required": ["place", "why"], "additionalProperties": False}},
-         "unverified": {"type": "array", "items": {"type": "string"}}},
+         "unverified": {"type": "array", "items": {"type": "string"}},
+         "listing_tie": {"type": "boolean", "description": "Private mode. True only when a listing ties this photo to the building. Otherwise false."}},
          "required": ["country", "lat", "lon", "radius_km", "level", "confidence", "summary", "clues"],
          "additionalProperties": False}},
 ]
@@ -169,29 +172,9 @@ def _friendly(e: Exception) -> str:
     return t[:400]
 
 
-def _image_holders(content):
-    """Every image part in a message body, including the ones nested inside Anthropic tool_result blocks."""
-    for part in content if isinstance(content, list) else []:
-        if not isinstance(part, dict):
-            continue
-        if part.get("type") in ("image", "image_url"):
-            yield part
-        elif part.get("type") == "tool_result" and isinstance(part.get("content"), list):
-            yield from (x for x in part["content"] if isinstance(x, dict) and x.get("type") in ("image", "image_url"))
-
-
-def _prune_images(messages: list, keep: int = 6) -> None:
-    """Keep the newest tool images; older ones become a note (they stay in the evidence tab),
-    so long runs do not resend every image every turn or overflow the context."""
-    seen = 0
-    for m in reversed(messages):
-        if not isinstance(m, dict) or m.get("role") != "user":
-            continue
-        for part in list(_image_holders(m.get("content"))):
-            seen += 1
-            if seen > keep:
-                part.clear()
-                part.update({"type": "text", "text": "[older image removed to save context; it is in the case evidence]"})
+def _prune_images(messages: list) -> None:
+    """Fit this slice of the transcript to the token budget. The opening photo is not in the slice."""
+    prune_messages(messages, context_token_budget())
 
 
 def _run_tool(case: Case, name: str, inp: dict) -> T.ToolOut:
@@ -205,7 +188,7 @@ def _run_tool(case: Case, name: str, inp: dict) -> T.ToolOut:
     if name == "streetview_sweep":
         return T.streetview_sweep(case, inp["lat"], inp["lon"], inp.get("radius_m", 3000), inp.get("provider") or "mapillary")
     if name == "satellite":
-        return T.satellite(case, inp["lat"], inp["lon"], inp.get("zoom", 16), inp.get("source", "esri"))
+        return T.satellite(case, inp["lat"], inp["lon"], inp.get("zoom", 18), inp.get("source", "esri"))
     if name == "terrain_view":
         return T.terrain_view(case, inp["lat"], inp["lon"], inp["heading"], inp.get("hfov", 70), inp.get("height_m", 2),
                               inp.get("range_m", 30000))
@@ -214,13 +197,17 @@ def _run_tool(case: Case, name: str, inp: dict) -> T.ToolOut:
     if name == "osm_query":
         return T.osm_query(inp["overpass_ql"])
     if name == "listing_search":
+        blocked = listing_block(case.load().get("mode"))
+        if blocked:
+            return T.ToolOut(blocked, is_error=True)
         return T.listing_search(inp["query"], inp.get("sites", ""))
     if name == "pin_candidate":
         case.add_candidate({k: inp[k] for k in ("lat", "lon", "label", "confidence", "radius_km", "reason")})
         return T.ToolOut("pinned")
     if name == "final_answer":
-        case.update(final=inp)
-        case.emit("final", final=inp)
+        filed = private_final(inp) if case.load().get("mode") == "private" else inp
+        case.update(final=filed)
+        case.emit("final", final=filed)
         return T.ToolOut("filed")
     return T.ToolOut(f"unknown tool {name}", is_error=True)
 
@@ -232,6 +219,16 @@ def _tool_result(case: Case, block, out: T.ToolOut) -> dict:
             case.add_evidence(path, caption)
             content.append(T.image_block(path))
     return {"type": "tool_result", "tool_use_id": block.id, "content": content, "is_error": out.is_error}
+
+
+def _prior_label(pj: dict) -> str:
+    models = set(pj.get("models") or [])
+    names = []
+    if "geoclip" in models:
+        names.append("GeoCLIP")
+    if "streetclip" in models:
+        names.append("StreetCLIP")
+    return " و ".join(names) if names else "النماذج المحلية"
 
 
 def _prior_candidates(case: Case) -> None:
@@ -246,7 +243,7 @@ def _prior_candidates(case: Case) -> None:
     if "lat" in bg:
         case.add_candidate({"lat": bg["lat"], "lon": bg["lon"], "label": f"تخمين النماذج · {bg.get('near', '')}",
                             "confidence": round(float((pj.get("assessment") or {}).get("top_p", 0.2)), 2),
-                            "radius_km": 300, "reason": "ترتيب GeoCLIP و StreetCLIP (منطقة بداية، متوسط الخطأ ~270 كم)",
+                            "radius_km": 300, "reason": f"ترتيب {_prior_label(pj)} (منطقة بداية، مو قياس صقر)",
                             "source": "model"})
 
 
@@ -258,7 +255,7 @@ def _local_clues(case: Case, pj: dict) -> list[str]:
         out.append(f"توقع النماذج المحلية للدولة: {top}")
     bg = pj.get("best_guess") or {}
     if "lat" in bg:
-        out.append(f"أقوى تجمع في GeoCLIP قرب {bg.get('near', '?')} ({bg['lat']:.2f}, {bg['lon']:.2f}) · متوسط خطأ هالنماذج ~270 كم")
+        out.append(f"أقوى تجمع في GeoCLIP قرب {bg.get('near', '?')} ({bg['lat']:.2f}, {bg['lon']:.2f})")
     if (pj.get("assessment") or {}).get("informative") is False:
         out.append("الصورة فقيرة بالتفاصيل، فالتخمين ضعيف حتى على مستوى الدولة")
     work = case.dir / "work" / "recon"
@@ -313,13 +310,15 @@ def run_geolocate(case: Case, mode: str) -> None:
             top = (pj.get("combined") or [{}])[0]
             if "lat" not in bg or not top.get("name"):
                 return finish(case, "error", "",
-                              "الفحص المحلي ما رجع تخمين موقع. توقع الدولة (StreetCLIP) غير تجاري ومطفأ "
-                              "إلا إذا ضبطت SAQR_ALLOW_NC_MODELS=1 على جهاز شخصي. "
-                              "أضف مفتاح من الإعدادات للتحليل الكامل، أو شوف السجل.")
+                              "الفحص المحلي ما رجع تخمين موقع. المسار التجاري يطلب GeoCLIP بعد تخطي StreetCLIP، "
+                              "وما انكتب prior.json. أضف مفتاح من الإعدادات للتحليل الكامل، أو شوف السجل. "
+                              "StreetCLIP يشتغل فقط مع SAQR_ALLOW_NC_MODELS=1 على جهاز شخصي غير تجاري.")
+            who = _prior_label(pj)
             final = {"country": top["name"], "region": "", "city": bg.get("near", ""),
                      "lat": bg["lat"], "lon": bg["lon"], "radius_km": 300, "level": "country",
                      "confidence": "low",
-                     "summary": "وضع محلي بدون ذكاء اصطناعي: هذا تخمين نماذج التعرف المحلية فقط (GeoCLIP + StreetCLIP). "
+                     "summary": f"وضع محلي بدون ذكاء اصطناعي: هذا تخمين {who} فقط. "
+                                "StreetCLIP غير تجاري وما يشتغل إلا مع SAQR_ALLOW_NC_MODELS=1. "
                                 "أضف مفتاح OpenRouter أو Anthropic من الإعدادات عشان يشتغل التحليل الكامل والتحقق.",
                      "clues": _local_clues(case, pj), "alternatives": [],
                      "unverified": ["ما فيه خطوة تفكير وتحقق: هذا ترتيب النماذج بس، والنقطة على الخريطة منطقة بداية مو جواب"]}
@@ -348,7 +347,7 @@ def _intro(case: Case, mode: str, recon_md: str) -> str:
     w, h = T.photo_size(case)
     return (f"{MODE_HINT.get(mode, MODE_HINT['region'])}\n\nWhere was this photo taken?\n"
             f"The photo is {w}x{h} px (the copy you see may be downscaled; view_photo boxes use the full size).\n\n"
-            f"<recon>\n{recon_md[:20000]}\n</recon>")
+            f"<recon>\n{clip_text(recon_md, recon_token_budget())}\n</recon>")
 
 
 def _stop_requested(case: Case) -> bool:
@@ -385,6 +384,7 @@ def _agent_loop(case: Case, mode: str, recon_md: str) -> None:
         if _stop_requested(case):
             return
         case.emit("progress", turn=turn + 1, max=MAX_TURNS)
+        case.add_cost(turns=1)
         _prune_images(messages[1:])
         msg = _stream_with_retry(
             client, model=model, max_tokens=64000, system=system, tools=TOOLS + SERVER_TOOLS, messages=messages,
@@ -392,6 +392,9 @@ def _agent_loop(case: Case, mode: str, recon_md: str) -> None:
             cache_control={"type": "ephemeral"},
             betas=["server-side-fallback-2026-07-01"], fallbacks="default",
         )
+        spent = usage_delta(getattr(msg, "usage", None))
+        if spent:
+            case.add_cost(**spent)
 
         for b in msg.content:
             if b.type == "thinking" and getattr(b, "thinking", ""):
@@ -400,6 +403,7 @@ def _agent_loop(case: Case, mode: str, recon_md: str) -> None:
                 case.emit("say", text=b.text)
             elif b.type == "server_tool_use":
                 case.emit("tool", name=b.name, input=b.input)
+                case.add_cost(tools=1)
         messages.append({"role": "assistant", "content": msg.content})
 
         if msg.stop_reason == "refusal":
@@ -426,6 +430,7 @@ def _agent_loop(case: Case, mode: str, recon_md: str) -> None:
                                 "content": f"INVALID_INPUT: {err}. Re-issue the call with a complete JSON object."})
                 continue
             case.emit("tool", name=b.name, input=b.input)
+            case.add_cost(tools=1)
             try:
                 out = _run_tool(case, b.name, b.input)
             except Exception as e:
@@ -457,9 +462,13 @@ def _agent_loop_openrouter(case: Case, mode: str, recon_md: str) -> None:
         if _stop_requested(case):
             return
         case.emit("progress", turn=turn + 1, max=MAX_TURNS)
+        case.add_cost(turns=1)
         _prune_images(messages[2:])
         resp = OR.chat(model=model, messages=messages, tools=tools, max_tokens=32000, max_tool_calls=12,
                        **OR.reasoning(model, EFFORT))
+        spent = usage_delta(resp.get("usage"))
+        if spent:
+            case.add_cost(**spent)
         choice = (resp.get("choices") or [{}])[0]
         msg, finish = choice.get("message") or {}, choice.get("finish_reason")
         if isinstance(msg.get("reasoning"), str) and msg["reasoning"].strip():
@@ -469,6 +478,7 @@ def _agent_loop_openrouter(case: Case, mode: str, recon_md: str) -> None:
         cites = [a for a in msg.get("annotations") or [] if a.get("type") == "url_citation"]
         if cites:
             case.emit("tool", name="web_search", input={"sources": len(cites)})
+            case.add_cost(tools=1)
         calls = msg.get("tool_calls") or []
         kept = {"role": "assistant", "content": msg.get("content") or ""}
         if calls:
@@ -503,6 +513,7 @@ def _agent_loop_openrouter(case: Case, mode: str, recon_md: str) -> None:
                                  "content": f"INVALID_INPUT: {err}. Re-issue the call with a complete JSON object."})
                 continue
             case.emit("tool", name=name, input=inp)
+            case.add_cost(tools=1)
             try:
                 out = _run_tool(case, name, inp)
             except Exception as e:

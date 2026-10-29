@@ -20,6 +20,7 @@ from . import cases
 from . import openrouter as OR
 from .config import (CASES_DIR, GEOINT, OR_DEFAULT, ROOT, SCRIPTS, UV, WEB_DIR, engine_label, load_dotenv,
                      model_name, provider)
+from .limits import person_search_enabled
 
 load_dotenv()
 app = FastAPI(title="SAQR")
@@ -29,6 +30,23 @@ MODES = {"region", "street", "private", "verify", "car", "person", "plate"}
 MAX_UPLOAD = 40 * 1024 * 1024
 BOARD = CASES_DIR / "saqr_board.json"
 PIN_KINDS = {"place", "camera", "note"}
+# Hosts the page actually calls: OpenFreeMap tiles/glyphs/sprites, Esri World Imagery, Nominatim search.
+# worker-src blob: is MapLibre's worker. wasm-unsafe-eval is the RTL plugin. style-src keeps
+# 'unsafe-inline' because the HUD writes style attributes. frame-ancestors stays none.
+CONTENT_SECURITY_POLICY = (
+    "default-src 'self'; "
+    "script-src 'self' 'wasm-unsafe-eval'; "
+    "style-src 'self' 'unsafe-inline'; "
+    "img-src 'self' data: blob: https://tiles.openfreemap.org https://server.arcgisonline.com; "
+    "font-src 'self'; "
+    "connect-src 'self' https://tiles.openfreemap.org https://server.arcgisonline.com https://nominatim.openstreetmap.org; "
+    "worker-src 'self' blob:; "
+    "child-src blob:; "
+    "frame-ancestors 'none'; "
+    "base-uri 'self'; "
+    "form-action 'self'; "
+    "object-src 'none'"
+)
 
 
 @app.middleware("http")
@@ -38,21 +56,37 @@ async def no_stale_ui(request: Request, call_next):
         resp.headers["Cache-Control"] = "no-cache"
     resp.headers["X-Content-Type-Options"] = "nosniff"
     resp.headers["X-Frame-Options"] = "DENY"
-    resp.headers["Content-Security-Policy"] = "frame-ancestors 'none'"
+    resp.headers["Content-Security-Policy"] = CONTENT_SECURITY_POLICY
     return resp
 
 
-cases.recover_stale()   # nothing can still be running when the server starts
+def bind_loopback(port: int):
+    """Bind 127.0.0.1. If the port is taken, exit before any case is rewritten."""
+    import socket
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    try:
+        sock.bind(("127.0.0.1", port))
+    except OSError as e:
+        sock.close()
+        raise SystemExit(f"127.0.0.1:{port} is already in use ({e}). Not marking running cases as failed.")
+    sock.listen(2048)
+    return sock
 
 
 def _start(case: cases.Case, mode: str) -> None:
     from .agent import run_geolocate
     from .analysis import run_car, run_verify
     from .identify import run_person, run_plate
+    from .pool import get_pool
     target = {"region": lambda: run_geolocate(case, "region"), "street": lambda: run_geolocate(case, "street"),
               "private": lambda: run_geolocate(case, "private"), "verify": lambda: run_verify(case),
               "car": lambda: run_car(case), "person": lambda: run_person(case), "plate": lambda: run_plate(case)}[mode]
-    threading.Thread(target=target, daemon=True, name=f"case-{case.id}").start()
+
+    def queued() -> None:
+        get_pool().submit(target)
+
+    threading.Thread(target=queued, daemon=True, name=f"queue-{case.id}").start()
 
 
 def _hint(name: str) -> str:
@@ -68,7 +102,8 @@ def status():
             "key_hint": _hint("OPENROUTER_API_KEY" if prov == "openrouter" else "ANTHROPIC_API_KEY") if prov else "",
             "keys": {"anthropic": _hint("ANTHROPIC_API_KEY"), "openrouter": _hint("OPENROUTER_API_KEY")},
             "or_model": os.environ.get("SAQR_OR_MODEL") or OR_DEFAULT, "cases_dir": str(CASES_DIR),
-            "geoint_ok": (SCRIPTS / "recon.py").exists(), "geoint_path": str(GEOINT), "uv_ok": bool(shutil.which(UV))}
+            "geoint_ok": (SCRIPTS / "recon.py").exists(), "geoint_path": str(GEOINT), "uv_ok": bool(shutil.which(UV)),
+            "person_search": person_search_enabled()}
 
 
 def _local_origin(request: Request) -> None:
@@ -215,7 +250,12 @@ def rerun_case(cid: str, request: Request, body: dict = Body(default={})):
     old = _case(cid)
     d = old.load()
     mode = body.get("mode") or d.get("mode", "region")
-    return _new(d.get("filename") or old.photo.name, old.photo.read_bytes(), mode,
+    try:
+        raw = old.photo.read_bytes()
+        name = d.get("filename") or old.photo.name
+    except FileNotFoundError:
+        raise HTTPException(409, "الصورة الأصلية مو موجودة، ما أقدر أعيد التحليل")
+    return _new(name, raw, mode,
                 rev=bool(body.get("rev", d.get("rev", True))), rerun_of=old.id,
                 query=d.get("query", ""), text_only=bool(d.get("text_only")))
 
@@ -229,6 +269,30 @@ def cancel_case(cid: str, request: Request):
         raise HTTPException(409, "التحليل مو شغال")
     case.update(cancel=True)
     case.emit("log", text="طلبت الإيقاف: بيوقف بعد الخطوة الحالية")
+    return case.load()
+
+
+@app.post("/api/cases/{cid}/review")
+def review_case(cid: str, request: Request, body: dict = Body(default={})):
+    """Confirm writes ground truth. Possible and dismiss mark the pin and leave any truth in place."""
+    _local_origin(request)
+    case = _case(cid)
+    verdict = body.get("verdict")
+    raw_n = body.get("n")
+    n = None
+    if raw_n is not None:
+        try:
+            n = int(raw_n)
+        except (TypeError, ValueError):
+            raise HTTPException(400, "n")
+    try:
+        lat = None if body.get("lat") is None else float(body["lat"])
+        lon = None if body.get("lon") is None else float(body["lon"])
+        case.review(str(verdict or ""), n=n, lat=lat, lon=lon, country=body.get("country"))
+    except KeyError:
+        raise HTTPException(404, "ما فيه شيء للمراجعة")
+    except (TypeError, ValueError):
+        raise HTTPException(400, "مراجعة غير صالحة")
     return case.load()
 
 
@@ -386,8 +450,15 @@ app.mount("/", StaticFiles(directory=WEB_DIR, html=True), name="web")
 
 
 def main() -> None:
+    """Own the port first, then create the cases directory and fail only the runs this process interrupted."""
     import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=int(os.environ.get("SAQR_PORT") or 8765), log_level="warning")
+    from .config import ensure_cases_dir
+    port = int(os.environ.get("SAQR_PORT") or 8765)
+    sock = bind_loopback(port)
+    ensure_cases_dir()
+    cases.recover_stale()
+    config = uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning")
+    uvicorn.Server(config).run(sockets=[sock])
 
 
 if __name__ == "__main__":

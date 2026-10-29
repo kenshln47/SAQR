@@ -36,7 +36,14 @@ def _cases_dir() -> Path:
 
 
 CASES_DIR = _cases_dir()
-CASES_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def ensure_cases_dir() -> Path:
+    """Create the cases directory when a server is actually starting, not at import."""
+    CASES_DIR.mkdir(parents=True, exist_ok=True)
+    return CASES_DIR
+
+
 WEB_DIR = ROOT / "web"
 GEOINT = Path(os.environ.get("SAQR_GEOINT") or Path.home() / ".claude" / "skills" / "geoint")
 SCRIPTS = GEOINT / "scripts"

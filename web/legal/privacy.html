@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SAQR · privacy</title>
+<link rel="stylesheet" href="/fonts.css">
+<link rel="stylesheet" href="/report.css">
+</head>
+<body>
+<main>
+<h1>SAQR · PRIVACY</h1>
+<p dir="ltr">SAQR is a program on this computer. It listens on 127.0.0.1 only. There is no SAQR account and no SAQR server in the cloud. This page says what the code sends, and what it keeps. It is not a promise about anyone else's servers.</p>
+
+<h2>ماذا يبقى على الجهاز</h2>
+<p>كل قضية مجلد على القرص: الصورة الأصلية، الأدلة، التقرير، السجل، والملاحظات. الحذف ينقل المجلد إلى <span dir="ltr">_saqr_trash</span> في نفس مكان القضايا. ما فيه حذف نهائي من داخل البرنامج. المفاتيح تنحفظ في <span dir="ltr">saqr/.env</span> على الجهاز. تفضيلات الواجهة (ومنها تشغيل البحث العكسي) تنحفظ في المتصفح على هذا الجهاز.</p>
+
+<h2>تحليل الشخص واللوحة والمكان الخاص</h2>
+<p>وضع «من هذا الشخص؟» افتراضياً لا يطابق صورة أو إيميل أو رقم جوال أو اسم بشخص. يرجّع <span dir="ltr">found=false</span> واسماً فارغاً. لا يبحث في الويب ولا في Gravatar ولا يرسل الصورة. إذا ضُبط <span dir="ltr">SAQR_PERSON_SEARCH=1</span> يرجع المسار القديم: النموذج، والويب، وGravatar، والفحص الأولي. يحتاج مفتاح API. <span dir="ltr">found</span> لا يصير صحيحاً إلا بربط ثانٍ. نفس الاسم ليس نتيجة.</p>
+<p>وضع «لوحة السيارة» يقرأ أحرف اللوحة ويسمّي المركبة. حقل المالك يُفرَّغ. لا يخمن المالك ولا يبحث عنه. يحتاج مفتاح API لقراءة اللوحة.</p>
+<p>وضع «تحديد مكان خاص» يبقي سلم الأدلة ويسمح ببحث الإعلانات. يثبت المبنى فقط إذا إعلان ربط الصورة بالمبنى (<span dir="ltr">listing_tie</span>). بغير ذلك يوقف عند المدينة ونصف القطر لا يقل عن 15 كم. لا يسمّي مدرسة ولا روتيناً يومياً.</p>
+<p>وضع «تحديد المنطقة» و«تحديد الشارع» يوقفان عند المدينة إذا الصورة شخص خاص أو بيت خاص، وما يثبتان المبنى.</p>
+
+<h2>ماذا يطلع من الجهاز</h2>
+<ul>
+<li>البحث العكسي شغّال افتراضياً في هذا المتصفح، والصورة تنرفع إلى Yandex و Baidu. إذا أُطفئ وحُفظ في المتصفح، يبقى مطفي. قضية خزّنت الإيقاف تبقى مطفية.</li>
+<li>إذا فيه مفتاح Anthropic أو OpenRouter، خطوات التحليل والصور اللي يشوفها النموذج تروح لذاك المزود.</li>
+<li>الخريطة تطلب بلاطات من <span dir="ltr">tiles.openfreemap.org</span>. طبقة القمر الصناعي في الواجهة من Esri World Imagery حتى الزوم 19، مع النسبة: Esri, Maxar, Earthstar Geographics, and the GIS User Community. بحث المكان في الواجهة يتصل بـ Nominatim.</li>
+<li>أدوات الشارع تستخدم Mapillary افتراضياً، أو Kartaview أو Panoramax. Google و Apple و Bing و Yandex للبانوراما تشتغل فقط بمفتاحها. أداة القمر الصناعي للوكيل تستخدم Esri ما لم يُطلب مصدر غيره. Wayback ما ينطلب. بحث عكسي يبدأ شغّال في هذا المتصفح إلا إذا أُطفئ وحُفظ.</li>
+</ul>
+<p>ما فيه حسابات متعددة. اللي يشغّل البرنامج هو اللي يملك الملفات.</p>
+<p><a href="/legal/terms.html">الشروط</a> · <a href="/legal/retention.html">الاحتفاظ</a></p>
+</main>
+</body>
+</html>

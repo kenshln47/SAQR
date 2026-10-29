@@ -1,6 +1,5 @@
-"""Identity modules: who is this person (photo and/or email/phone/name), and what a licence plate says.
+"""Person search is off unless SAQR_PERSON_SEARCH=1. Plate mode reads a plate and does not name an owner.
 
-Each module runs its own short agent loop over its own tools and files one answer.
 agent.py's geolocation loop is not touched.
 """
 from __future__ import annotations
@@ -17,6 +16,8 @@ from . import tools as T
 from .agent import _friendly, _stream_with_retry, finish
 from .cases import Case
 from .config import EFFORT, MAX_TURNS, engine_label, has_ai, model_name, provider
+from .context import clip_text, context_token_budget, prune_messages, recon_token_budget, usage_delta
+from .limits import person_refusal, person_search_enabled, plate_final
 
 WEB_SEARCH_OR = {"type": "openrouter:web_search", "parameters": {"max_results": 5, "max_uses": 8}}
 SERVER_WEB = {"type": "web_search_20260209", "name": "web_search", "max_uses": 8}
@@ -65,6 +66,7 @@ PLATE_TOOLS = [VIEW, WEB, FILE_PLATE]
 
 SYSTEM_PERSON = """You are SAQR's identity analyst, running on the user's own computer.
 You identify a person from whatever you are given: a photo, an email, a phone number, a name, or a mix.
+This prompt is used only when SAQR_PERSON_SEARCH=1. The default does not call you.
 
 Method
 - web_lookup is a real search engine and needs no key. Use it for everything, in the local language of the lead.
@@ -81,6 +83,9 @@ Method
   A face alone identifies a public figure well, and a private person only if the photo is on the web.
 - Verification: an account counts only when the search result actually ties it to this person. Do not merge two people
   with the same name. Never present a guess as a fact.
+- found and same-name are different. Set found to true only when the photo, the email, or the phone ties to that
+  one person. A page that only shows the same name, with no second tie, is not found: put the name in unverified
+  and set found to false.
 
 Finish by calling file_person exactly once, even when the evidence is thin (say so in unverified).
 Write summary, role and every why in Gulf Arabic, concise. Handles and URLs stay as they are."""
@@ -93,10 +98,9 @@ Method
 2. Identify the vehicle from the grille, lamps, badges and body (make, model, year range).
 3. The plate style, colours and country code are location and era clues: private, commercial, taxi, diplomatic,
    export. Use web_lookup to confirm what the format means.
-4. Search the plate itself: the digits and letters together, and the digits with the vehicle. Cars appear in
-   marketplaces and forums with their plate.
-5. On the owner: in Saudi Arabia the owner's name is not public from the plate alone. Say so plainly, name the route
-   (Absher / Mojaz) when the country is Saudi, and only give an owner name when a listing or a page really shows one.
+4. Do not guess, infer, or search for an owner. Leave owner empty. owner_note says the characters were read and
+   the owner was not identified. Do not name a person from the plate. A marketplace hit, a same name, or a plate
+   format is not an owner.
 
 Never invent a character you cannot read; a partially read plate is still useful. Say which characters are certain.
 Finish by calling file_plate exactly once. Write summary, vehicle and owner_note in Gulf Arabic."""
@@ -127,8 +131,9 @@ def _run_tool(case: Case, name: str, inp: dict) -> T.ToolOut:
     if name == "gravatar_lookup":
         return T.gravatar_lookup(case, inp["email"])
     if name.startswith("file_"):
-        case.update(final=inp)
-        case.emit("final", final=inp)
+        filed = plate_final(inp) if name == "file_plate" else inp
+        case.update(final=filed)
+        case.emit("final", final=filed)
         return T.ToolOut("filed")
     return T.ToolOut(f"unknown tool {name}", is_error=True)
 
@@ -160,9 +165,14 @@ def _agent(case: Case, system: str, tools: list[dict], intro: str, image: Path |
             case.emit("log", text="انوقف التحليل بطلبك")
             return
         case.emit("progress", turn=turn + 1, max=MAX_TURNS)
+        case.add_cost(turns=1)
+        prune_messages(messages[2:] if use_or else messages[1:], context_token_budget())
         if use_or:
             resp = OR.chat(model=model, messages=messages, tools=api_tools, max_tokens=16000, max_tool_calls=10,
                            **OR.reasoning(model, EFFORT))
+            spent = usage_delta(resp.get("usage"))
+            if spent:
+                case.add_cost(**spent)
             choice = (resp.get("choices") or [{}])[0]
             msg, why = choice.get("message") or {}, choice.get("finish_reason")
             if isinstance(msg.get("reasoning"), str) and msg["reasoning"].strip():
@@ -197,6 +207,7 @@ def _agent(case: Case, system: str, tools: list[dict], intro: str, image: Path |
                     messages.append({"role": "tool", "tool_call_id": c["id"], "content": f"INVALID_INPUT: {err}"})
                     continue
                 case.emit("tool", name=name, input=inp)
+                case.add_cost(tools=1)
                 try:
                     out = _run_tool(case, name, inp)
                 except Exception as e:
@@ -217,6 +228,9 @@ def _agent(case: Case, system: str, tools: list[dict], intro: str, image: Path |
             msg = _stream_with_retry(client, model=model, max_tokens=16000, system=system, tools=api_tools,
                                      messages=messages, thinking={"type": "adaptive", "display": "summarized"},
                                      output_config={"effort": EFFORT})
+            spent = usage_delta(getattr(msg, "usage", None))
+            if spent:
+                case.add_cost(**spent)
             for b in msg.content:
                 if b.type == "thinking" and getattr(b, "thinking", ""):
                     case.emit("thinking", text=b.thinking)
@@ -241,6 +255,7 @@ def _agent(case: Case, system: str, tools: list[dict], intro: str, image: Path |
                                     "content": f"INVALID_INPUT: {err}"})
                     continue
                 case.emit("tool", name=b.name, input=b.input)
+                case.add_cost(tools=1)
                 try:
                     out = _run_tool(case, b.name, b.input)
                 except Exception as e:
@@ -271,20 +286,37 @@ def _finish_run(case: Case, what: str) -> None:
 
 
 def run_person(case: Case) -> None:
+    """Default files found false and calls nothing. SAQR_PERSON_SEARCH=1 runs model, web, Gravatar, and recon."""
+    if not person_search_enabled():
+        try:
+            case.update(status="analysing", engine="local")
+            final = person_refusal()
+            case.update(final=final)
+            case.emit("final", final=final)
+            finish(case, "done", "ما انعمل بحث عن شخص")
+        except Exception as e:
+            case.emit("log", text=f"{type(e).__name__}: {e}", trace=traceback.format_exc()[-2000:])
+            finish(case, "error", "", _friendly(e))
+        return
     try:
         d = case.load()
         query = (d.get("query") or "").strip()
-        text_only = bool(d.get("text_only")) or not case.photo.exists()
+        try:
+            photo_ok = case.photo.is_file()
+        except FileNotFoundError:
+            photo_ok = False
+        text_only = bool(d.get("text_only")) or not photo_ok
         case.update(status="recon", engine=engine_label() if has_ai() else "local")
         if text_only:
             case.emit("stage", stage="recon", text="إدخال نصي: نبحث مباشرة")
             recon_md = ""
         else:
-            case.emit("stage", stage="recon", text="الفحص الأولي: بيانات الملف · قراءة النص · بحث عكسي")
+            rev = bool(d.get("rev", True))
+            case.emit("stage", stage="recon", text="الفحص الأولي: بيانات الملف · قراءة النص" + (" · بحث عكسي" if rev else ""))
             rec = T.recon(case)
             for p, cap in rec.images:
                 case.add_evidence(p, cap)
-            recon_md = rec.text[:12000]
+            recon_md = clip_text(rec.text, recon_token_budget())
         if case.cancelled():
             return finish(case, "stopped", "انوقف بطلبك")
         if not has_ai():
@@ -322,7 +354,7 @@ def run_plate(case: Case) -> None:
         case.emit("stage", stage="analysis", text=f"{engine_label()} يقرأ اللوحة ويتحقق")
         w, h = T.photo_size(case)
         intro = (f"Read the licence plate in this photo ({w}x{h} px; view_photo boxes use these pixels) and report "
-                 f"what it supports. Crop the plate before reading it.\n\n<recon>\n{rec.text[:12000]}\n</recon>")
+                 f"what it supports. Crop the plate before reading it.\n\n<recon>\n{clip_text(rec.text, recon_token_budget())}\n</recon>")
         _agent(case, SYSTEM_PLATE, PLATE_TOOLS, intro, case.photo, "file_plate")
         _finish_run(case, "قراءة اللوحة")
     except Exception as e:

@@ -151,13 +151,6 @@ def render_html(cid: str, md: str) -> str:
     flush()
     return f"""<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1"><title>SAQR · {html.escape(cid)}</title>
-<style>
-body{{margin:0;background:#05080c;color:#dce7f0;font:15px/1.8 "IBM Plex Sans Arabic",system-ui,sans-serif}}
-main{{max-width:880px;margin:0 auto;padding:32px 20px 80px}}
-h1{{font:600 15px ui-monospace,Consolas,monospace;color:#5ee7ff;letter-spacing:.06em;direction:ltr;text-align:start}}
-h2{{font-size:24px;margin:24px 0 8px}} h3{{color:#8fa3b5;font-size:14px;margin:26px 0 8px}}
-code,pre{{font:12.5px ui-monospace,Consolas,monospace;color:#9fdfff}} pre{{background:#0b131b;padding:12px;border-radius:10px;overflow:auto;direction:ltr;text-align:left}}
-ul{{padding:0;list-style:none;display:grid;gap:6px}} li{{background:#0b131b;border:1px solid #162533;border-radius:10px;padding:8px 12px}}
-table{{border-collapse:collapse;width:100%;font-size:13px}} th,td{{border-bottom:1px solid #162533;padding:6px 8px;text-align:start}}
-figure{{margin:14px 0}} img{{max-width:100%;border-radius:10px;border:1px solid #162533}} figcaption{{color:#8fa3b5;font-size:12px;direction:ltr;text-align:start}}
-</style></head><body><main>{"".join(out)}</main></body></html>"""
+<link rel="stylesheet" href="/fonts.css">
+<link rel="stylesheet" href="/report.css">
+</head><body><main>{"".join(out)}</main></body></html>"""
