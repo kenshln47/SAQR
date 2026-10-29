@@ -62,7 +62,7 @@ Status: DONE on `harden/commercial`.
 | M-PKG-01 | DONE `c63e321` |
 | M-GEOINT-01 | DONE `d5414fd` |
 
-`uv.lock` resolves the `requirements.txt` pins. Torch and `streetlevel` stay outside that lock: setup installs torch itself, and streetlevel with `--no-deps`, same as `setup.bat`. The skill is cloned, not vendored.
+`uv.lock` resolved the `requirements.txt` pins at `c63e321`. Phase 7 (`fd22abc`) adds direct pins for `torch==2.15.0` and `streetlevel==0.12.13` and drops `pyfrpc`. `requirements.txt` still omits both, so `setup.sh` does not install them twice. The skill is cloned, not vendored.
 
 ## Phase 5 — product
 
@@ -78,6 +78,8 @@ Status: DONE on `harden/commercial`.
 
 Reverse search defaults off. The Yandex/Baidu sentence stays. Fonts are local. The style JSON is local and the tiles are OpenFreeMap. The satellite toggle is NASA GIBS Blue Marble, native zoom 8. Esri and Wayback are refused. `possible` does not write truth (`266d2b7`). Privacy, terms, and retention are `46ada21`.
 
+Phase 7 supersedes the satellite layer and the reverse-search default. The sentences above are what phase 5 shipped.
+
 Not in this phase: accounts for a multi-user server. Not closed: `H-GEOCLIP-01`, `H-RANK-01`, `B-PRIV-01`, `H-PROMPT-01`.
 
 ## Phase 6 — report
@@ -91,8 +93,31 @@ Status: DONE on `harden/commercial`.
 
 `B-PRIV-01` is still the code. Region and street stop at the city for a private person or a private home. Private-place replaces `SYSTEM` with `PRIVATE_NOTE` (`H-PROMPT-01`). Person and plate still run. The README says that. It does not remove it.
 
-Still open: `H-GEOCLIP-01`, `H-RANK-01`, `B-PRIV-01`, `H-PROMPT-01`.
+Still open: `H-GEOCLIP-01`, `H-RANK-01`, `B-PRIV-01`. `H-PROMPT-01`'s dangling "rule above" sentence is gone in `d97e0b3`. Private-place mode still does not load `SYSTEM`, and it still targets a building, a school, and a routine. That was not removed.
+
+## Phase 7 — measure, restore, and say what is not measured
+
+Status: OPEN. Nothing here merges to `main`. The accuracy number does not exist yet.
+
+The product still identifies a person from a photo, email, phone, or name, still reads a plate, and still can pin a private place. This phase does not remove that.
+
+| Item | Status |
+|---|---|
+| Corpus | 202 photos outside git (`SAQR_CORPUS`, default `/var/saqr-corpus`), manifest with the source coordinate. Strata: city 65, town 40, rural 40, gulf 40, interior 17, screenshot 0. Screenshot categories that were fetched had no coordinates. Commons geosearch and Wikidata SPARQL did not return a usable set (cirrussearch busy, HTTP 429). Not invented |
+| Score | `bench/run_score.py` is the local GeoCLIP prior only (`95b0818`). `score.json` is not written. Do not quote a median from a partial `geoclip_detail.jsonl`. This is not the tool-using agent and not a vision-LLM rank |
+| H-GEOCLIP-01 | OPEN. StreetCLIP has not been run on this corpus. RAM is about 4 GB; it waits until GeoCLIP is not resident |
+| H-RANK-01 | OPEN. No provider key. `OR_DEFAULT` was not re-ranked. The picker still says 10.9 km on the default and 8.7 km on the next row |
+| H-ESRI-01 | The phase 5 close (`7e23e6a`) deleted the layer. Restored in `d97e0b3`: Esri World Imagery, attribution, zoom clamped at 19, Wayback still refused. A browser on 2026-10-29 loaded zoom-19 JPEG tiles (HTTP 200) and `#mapErr` stayed hidden |
+| Reverse search | ON by default again in `d97e0b3`. The form notice stays. A stored `false` in this browser stays off |
+| H-PROMPT-01 | Prompt text rewritten in `d97e0b3`. Plate: do not guess an owner. Person: `found` needs a second tie; a same-name hit is unverified. `PRIVATE_NOTE` stands alone. `SYSTEM` is not concatenated onto it. `B-PRIV-01` stays open |
+| Tiles | ADR-012. If `tiles.openfreemap.org` fails, the map stops. No second free host. Replacement is a paid vector endpoint or a self-hosted OpenMapTiles/Planetiler/Protomaps server, by editing `web/vendor/ofm-dark.json` |
+| setup.sh | Ran. Exit 0. It installed `torch 2.15.0+cu132` and `nvidia-*` wheels. `torch.cuda.is_available()` was false. The script comment had said CPU. `fd22abc` corrects the comment. It does not add a CPU index |
+| Docker | Not built. `docker` is not installed. `apt-get update` failed: `setgroups` not permitted, http/https method exit 112 |
+| Browser | Clicked with Playwright Chromium 156.0.8078.4 against `127.0.0.1`. OpenFreeMap tiles HTTP 200. Satellite toggle reached Esri zoom 19. The server was then stopped |
+| uv.lock | `fd22abc`. `torch==2.15.0` and `streetlevel==0.12.13` are direct pins. `pyfrpc` is not in the lock. They are still not in `requirements.txt`, and not in `.github/workflows/test.yml` |
+
+`main` stays `4fbe65e`.
 
 ## Explicitly not scheduled
 
-`B-PRIV-01`, `H-PROMPT-01`. Identifying a private person from a photo, email, phone, or name, reading a plate to find an owner, and pinning a private home, school, or daily routine stay as they are in the tree. I will not extend them.
+`B-PRIV-01`. Identifying a private person from a photo, email, phone, or name, reading a plate, and pinning a private home, school, or daily routine stay in the tree. Phase 7 rewrote the prompt text (`d97e0b3`) and did not extend those paths. I will not add a tool, a test, or a prompt that makes that targeting better.

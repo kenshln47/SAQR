@@ -71,7 +71,7 @@ What breaks: a licence fix shipped as a silent accuracy regression. Trigger: any
 
 Fix: measure prior-off vs GeoCLIP-only vs StreetCLIP+GeoCLIP in phase 2. If the gap is material, buy a StreetCLIP licence or call `prior.py --models geoclip` and keep StreetCLIP out. Do not leave the full skip in place once that measurement exists.
 
-The commercial follow-up is now `prior.py --models geoclip` after `--skip calib,prior` (`app/licensing.py` `prior_followup_args`, `app/tools.py` `recon`). StreetCLIP still loads only when `SAQR_ALLOW_NC_MODELS=1`. That is the permissive swap, not a measurement. No SAQR corpus has been scored, so this finding stays open. Commons geosearch on 2026-10-28 returned `cirrussearch-too-busy-error`. `bench.py make-streetview` is not an acceptable corpus.
+The commercial follow-up is now `prior.py --models geoclip` after `--skip calib,prior` (`app/licensing.py` `prior_followup_args`, `app/tools.py` `recon`). StreetCLIP still loads only when `SAQR_ALLOW_NC_MODELS=1`. That is the permissive swap, not a measurement. A 202-photo corpus exists outside git (phase 7, `95b0818`). Screenshot stratum is 0. The local-prior scorer has not finished, and `score.json` does not exist. Do not treat a partial `geoclip_detail.jsonl` as the number. StreetCLIP has not been compared. This finding stays open. Commons geosearch returned `cirrussearch-too-busy-error`. `bench.py make-streetview` was not used.
 
 Effort: M. Verify: a bench score with the three prediction files, and a commercial argv that still requests GeoCLIP. The argv check is in `tests/test_recon_followup.py`. The score file does not exist yet.
 
@@ -98,9 +98,9 @@ Effort: not estimated. Verify: `git diff` on `app/identify.py`, `PRIVATE_NOTE`, 
 
 Same assignment at `app/agent.py:447`. `PRIVATE_NOTE` says "the stop at city level rule above is relaxed" (`app/agent.py:54`) but `SYSTEM` is not included, so the method, the tool discipline, and the plate ban never reach the model. Trigger: mode `private`.
 
-Fix: not in the licence phase, and not by me if the fix is to make private-home targeting work better. Recorded so it is not mistaken for an intentional prompt.
+Fix: not in the licence phase, and not by concatenating `SYSTEM` onto `PRIVATE_NOTE`. That would hand the private-place mode the city stop and then tell it to ignore the city stop.
 
-Effort: S. Verify: unread until a later change; do not "fix" by concatenating the two prompts.
+`d97e0b3` rewrites the three prompts. `PRIVATE_NOTE` stands alone and no longer says "the rule above". The plate prompt says do not guess, infer, or search for an owner, and to leave owner empty. The person prompt sets `found` only with a second tie; a same-name hit goes to unverified with `found` false. `B-PRIV-01` stays open: private-place mode still names a building, a school, and a routine, and person and plate still run. This finding is not "targeting removed".
 
 ### [H-SSE-01] HIGH — every stream re-reads the whole log
 
@@ -168,7 +168,7 @@ Fix: ship an allowed raster (or a keyed Esri style) and name it in `THIRD_PARTY.
 
 Effort: M. Verify: the satellite toggle URL is one we have a written right to call.
 
-Closed in `7e23e6a`. The toggle is NASA GIBS Blue Marble Next Generation, matrix `GoogleMapsCompatible_Level8`. A zoom-8 tile returned JPEG on 2026-10-29; zoom 9 returned 400. NASA Earthdata says the imagery is shared openly and asks for an acknowledgment. s2maps.eu Sentinel-2 cloudless (2018–2024) is non-commercial and was not used. The agent `satellite` tool also refuses `esri` and `wayback`. Bing is still passed through to GeoInt when asked; that was already true and is not this finding.
+Closed in `7e23e6a` by deleting the layer (NASA GIBS, native zoom 8, zoom 9 returned 400). That close is withdrawn. `d97e0b3` restores Esri World Imagery with the attribution string, clamps the tool and the map at zoom 19, and still refuses Wayback. Google and Google Hybrid still need a key. A headless Chromium session on 2026-10-29 toggled قمر صناعي, jumped to zoom 19 over Riyadh, and received HTTP 200 `image/jpeg` tiles from `server.arcgisonline.com`. `#mapErr` stayed hidden. ADR-011 records the gate.
 
 ### [H-NET-01] HIGH — "local" UI depends on Google Fonts and Carto
 
@@ -189,7 +189,7 @@ Closed in `13a4c1c`. Inter and IBM Plex Sans Arabic are SIL OFL files in `web/fo
 
 README repeats 10.9 km as 1st and 8.7 km as tied 1st, and says `google/gemini-4-argon` was not benchmarked (README lines 27-35). `OR_DEFAULT` is opus (`app/config.py:52`). I did not re-run GeoGuessBench. A lower median on the same table is already enough to drop the "الأفضل" tag until a re-rank exists.
 
-Fix (phase 2): re-measure and rank from that run. Effort: L.
+Fix (phase 2): re-measure and rank from that run. Effort: L. Still open in phase 7. The corpus is a local-prior photo set, not an LLM ranking, and there is no provider key. `OR_DEFAULT` was not changed.
 
 ## MEDIUM
 
