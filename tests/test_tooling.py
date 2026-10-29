@@ -18,7 +18,13 @@ def test_the_workflow_runs_ruff_and_pytest() -> None:
     text = (ROOT / ".github" / "workflows" / "test.yml").read_text(encoding="utf-8")
     assert "ruff check app tests" in text
     assert "pytest -q" in text
-    assert "torch" not in text
+    assert "uv pip install --python .venv/bin/python pytest ruff pillow" in text
+
+
+def test_one_job_imports_cpu_torch() -> None:
+    text = (ROOT / ".github" / "workflows" / "test.yml").read_text(encoding="utf-8")
+    assert "download.pytorch.org/whl/cpu" in text
+    assert "import torch" in text
 
 
 def test_there_is_more_than_one_test_module() -> None:

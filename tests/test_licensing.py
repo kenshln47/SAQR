@@ -69,12 +69,19 @@ def test_closed_panoramas_need_their_own_key(monkeypatch: pytest.MonkeyPatch) ->
 def test_google_satellite_is_keyed(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("SAQR_GOOGLE_KEY", raising=False)
     monkeypatch.delenv("GOOGLE_MAPS_API_KEY", raising=False)
-    assert satellite_block_reason("wayback:2020-01")
+    monkeypatch.delenv("SAQR_BING_KEY", raising=False)
+    reason = satellite_block_reason("wayback:2020-01") or ""
+    assert "still refused" in reason
+    assert "not restored" in reason
     assert satellite_block_reason("esri") is None
-    assert satellite_block_reason("bing") is None
+    assert satellite_block_reason("bing")
+    assert "SAQR_BING_KEY" in (satellite_block_reason("bing") or "")
     assert satellite_block_reason("google")
     assert satellite_block_reason("google-hybrid")
     monkeypatch.setenv("SAQR_GOOGLE_KEY", "paid-key")
     assert satellite_block_reason("google-hybrid") is None
+    assert satellite_block_reason("bing")
+    monkeypatch.setenv("SAQR_BING_KEY", "bing-key")
+    assert satellite_block_reason("bing") is None
     assert satellite_block_reason("esri") is None
-    assert satellite_block_reason("wayback:2020-01")
+    assert "not restored" in (satellite_block_reason("wayback:2020-01") or "")

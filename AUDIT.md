@@ -71,7 +71,7 @@ What breaks: a licence fix shipped as a silent accuracy regression. Trigger: any
 
 Fix: measure prior-off vs GeoCLIP-only vs StreetCLIP+GeoCLIP in phase 2. If the gap is material, buy a StreetCLIP licence or call `prior.py --models geoclip` and keep StreetCLIP out. Do not leave the full skip in place once that measurement exists.
 
-The commercial follow-up is now `prior.py --models geoclip` after `--skip calib,prior` (`app/licensing.py` `prior_followup_args`, `app/tools.py` `recon`). StreetCLIP still loads only when `SAQR_ALLOW_NC_MODELS=1`. That is the permissive swap, not a measurement. A 202-photo corpus exists outside git (phase 7, `95b0818`). Screenshot stratum is 0. The local-prior scorer has not finished, and `score.json` does not exist. Do not treat a partial `geoclip_detail.jsonl` as the number. StreetCLIP has not been compared. This finding stays open. Commons geosearch returned `cirrussearch-too-busy-error`. `bench.py make-streetview` was not used.
+The commercial follow-up is now `prior.py --models geoclip` after `--skip calib,prior` (`app/licensing.py` `prior_followup_args`, `app/tools.py` `recon`). StreetCLIP still loads only when `SAQR_ALLOW_NC_MODELS=1`. That is the permissive swap, not a measurement. The corpus outside git is 232 photos: city 65, town 40, rural 40, gulf 40, interior 30, screenshot 17. Screenshot is short of 25. `bench/run_e2e.py` is the measurement: the agent loop, medium effort, four configurations (prior crossed with reverse search). It did not run. `ANTHROPIC_API_KEY` and `OPENROUTER_API_KEY` in `.env` are empty. `score.json` was not written. A partial `geoclip_detail.jsonl` from the GeoCLIP-only scorer is not this score. `bench.py make-streetview` was not used. This finding stays open.
 
 Effort: M. Verify: a bench score with the three prediction files, and a commercial argv that still requests GeoCLIP. The argv check is in `tests/test_recon_followup.py`. The score file does not exist yet.
 
@@ -88,6 +88,8 @@ Fix that I will not do here: leave the modules untouched. Do not wire them into 
 
 Effort: not estimated. Verify: `git diff` on `app/identify.py`, `PRIVATE_NOTE`, and the person/plate UI is empty after later phases.
 
+Closed by the city stop and the person refusal in `app/limits.py`. Private-place answers are forced to level `city` and a radius of at least 15 km. Listing search is refused in that mode. Person mode does not search and files `found: false`. Plate mode still reads the characters. The owner field is cleared in code. This is not a better identifier.
+
 ## HIGH
 
 ### [H-PROMPT-01] HIGH — private mode drops the geolocation system prompt
@@ -100,7 +102,7 @@ Same assignment at `app/agent.py:447`. `PRIVATE_NOTE` says "the stop at city lev
 
 Fix: not in the licence phase, and not by concatenating `SYSTEM` onto `PRIVATE_NOTE`. That would hand the private-place mode the city stop and then tell it to ignore the city stop.
 
-`d97e0b3` rewrites the three prompts. `PRIVATE_NOTE` stands alone and no longer says "the rule above". The plate prompt says do not guess, infer, or search for an owner, and to leave owner empty. The person prompt sets `found` only with a second tie; a same-name hit goes to unverified with `found` false. `B-PRIV-01` stays open: private-place mode still names a building, a school, and a routine, and person and plate still run. This finding is not "targeting removed".
+`d97e0b3` rewrites the three prompts. `PRIVATE_NOTE` stands alone and no longer says "the rule above". The plate prompt says do not guess, infer, or search for an owner, and to leave owner empty. Person mode does not call the model: `run_person` files `found: false` and does not search. Private-place text stops at the city. `SYSTEM` is still not concatenated onto `PRIVATE_NOTE`. Plate mode still reads the characters. This finding is not "targeting removed".
 
 ### [H-SSE-01] HIGH — every stream re-reads the whole log
 
@@ -213,13 +215,13 @@ Closed in `93e3ee6`. Import does not create the directory and does not mark a li
 
 No `tests/`, no `pyproject.toml`, no workflow. `pytest` and `ruff` are not installed here. Phase definition of done cannot be met until they exist. Effort: M. Phase 4, with the minimum runner added as soon as phase 1 needs a green `pytest`.
 
-Closed in `88747fb`. The suite, `pyproject.toml`, and `.github/workflows/test.yml` (`dcd8ba2`) are in the tree. The new test fails if they disappear. CI still installs pytest, ruff, and pillow only.
+Closed in `88747fb`. The suite, `pyproject.toml`, and `.github/workflows/test.yml` (`dcd8ba2`) are in the tree. The new test fails if they disappear. The pytest job still installs pytest, ruff, and pillow only. A separate job installs CPU torch and imports it.
 
 ### [M-PKG-01] MEDIUM — Windows-only bootstrap
 
 `setup.bat` and `run.bat` are the only entrypoints. `setup.bat:6-9` assumes `uv`, Python 3.12, and a CUDA wheel URL. A Linux or macOS clone has no command. Effort: M. Phase 4.
 
-Closed in `c63e321`. `scripts/setup.sh` and `scripts/run.sh` are the Linux and macOS entrypoints. `uv.lock` matches the requirement pins. Torch is still installed by the setup script, not by the lock.
+Closed in `c63e321`. `scripts/setup.sh` and `scripts/run.sh` are the Linux and macOS entrypoints. `uv.lock` matches the requirement pins. Torch is installed by the setup script, not by `requirements.txt`. The lock pins CPU torch. `setup.sh` uses that index unless `nvidia-smi -L` succeeds, then cu130. `setup.bat` still tries cu130 first (ADR-014).
 
 ### [M-GEOINT-01] MEDIUM — a fresh clone cannot geolocate
 

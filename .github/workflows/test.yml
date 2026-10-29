@@ -18,3 +18,16 @@ jobs:
         run: .venv/bin/ruff check app tests
       - name: pytest
         run: .venv/bin/pytest -q
+  torch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - name: import the CPU torch wheel
+        run: |
+          uv venv .venv --python 3.12
+          uv pip install --python .venv/bin/python torch torchvision --index-url https://download.pytorch.org/whl/cpu
+          .venv/bin/python -c "import torch; print(torch.__version__)"
+

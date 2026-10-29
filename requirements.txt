@@ -1,6 +1,8 @@
 # SAQR app + the geoint scripts it runs. Versions are the ones SAQR was tested with.
-# torch/torchvision are installed by setup.bat (CUDA build when available), and
-# streetlevel with --no-deps (its Mapy.cz-only dependency pyfrpc does not build on Windows).
+# torch/torchvision are not listed here. setup.sh installs the CPU index unless nvidia-smi
+# sees a GPU, then https://download.pytorch.org/whl/cu130. setup.bat still tries cu130 first.
+# streetlevel is installed with --no-deps. pyfrpc (Mapy.cz only) does not build on Windows.
+# The lock uses the CPU index and does not pull pyfrpc, pyexiv2, pytest, or cython via streetlevel.
 fastapi==0.162.0
 starlette==1.10.0
 uvicorn[standard]==0.54.0

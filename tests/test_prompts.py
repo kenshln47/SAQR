@@ -25,9 +25,12 @@ def test_plate_prompt_does_not_guess_an_owner() -> None:
 
 def test_person_prompt_separates_found_from_the_same_name() -> None:
     person = _block(IDENTIFY, "SYSTEM_PERSON")
-    assert "found to false" in person
+    assert "found to false" in person or "found is false" in person
     assert "same name" in person
-    assert "not found" in person
+    assert "does not match" in person
+    body = IDENTIFY.split("def run_person", 1)[1].split("def run_plate", 1)[0]
+    assert "_agent(" not in body
+    assert "person_refusal" in body
 
 
 def test_private_prompt_does_not_point_at_a_missing_rule() -> None:
@@ -36,3 +39,5 @@ def test_private_prompt_does_not_point_at_a_missing_rule() -> None:
     assert "stands alone" in private
     assert "Do not guess, infer, or name an owner" in private
     assert "Do not invent a building" in private
+    assert "stops at the city" in private
+    assert "Pin the building" not in private

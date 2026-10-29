@@ -10,7 +10,7 @@ This is not a measured accuracy claim. There is no scored SAQR photo corpus. Com
 
 - Windows, Linux, or macOS. Python 3.12 via [uv](https://docs.astral.sh/uv/) (`winget install astral-sh.uv` on Windows).
 - The GeoInt skill (MIT) is cloned by setup into `~/.claude/skills/geoint` (`%USERPROFILE%\.claude\skills\geoint` on Windows), or into `SAQR_GEOINT` if that is set, when `scripts/recon.py` is not already there. It is not copied into this repository. The status bar says when it is missing.
-- An NVIDIA GPU is optional. `setup.bat` tries a CUDA torch wheel and falls back to CPU torch. `scripts/setup.sh` installs CPU torch. GeoCLIP and MegaLoc weights are not in this repo. GeoInt downloads them when those scripts run. StreetCLIP is not on the commercial path.
+- An NVIDIA GPU is optional. `setup.bat` tries a CUDA torch wheel and falls back to CPU torch. `scripts/setup.sh` installs CPU torch unless `nvidia-smi -L` succeeds, then the cu130 index. GeoCLIP and MegaLoc weights are not in this repo. GeoInt downloads them when those scripts run. StreetCLIP is not on the commercial path.
 
 ## Run
 
@@ -42,23 +42,23 @@ Without a key, region and street runs use local metadata, OCR, object detection,
 
 Find Region and Find Street use `SYSTEM` in `app/agent.py`. That text tells the model not to geolocate a private person's home, school, or routine, to stop at city level, and never to read a plate number.
 
-Private-place mode does not keep that stop. The prompt sent is `PRIVATE_NOTE` instead of `SYSTEM`. `PRIVATE_NOTE` stands alone: it does not refer to a city-level rule that is not in the same message. It still tells the model it may pin a building when a listing or a text anchor matches, and that a school or a routine photo is in scope. A plate may be read as a location anchor. The prompt says not to guess an owner from it. `listing_search` is a DuckDuckGo text query of `airbnb.com`, `aqar.fm`, `bayut.sa`, and `haraj.com.sa`. It is not a photo index of listings.
+Private-place mode stops at the city. `PRIVATE_NOTE` stands alone and says so. The filed answer is forced to level `city` with a radius of at least 15 km (`app/limits.py`). Listing search is refused in this mode. A building, a school, and a routine are not pinned. A plate may be read as a location anchor. The prompt says not to name an owner. `B-PRIV-01` is closed by this gate, not by a better search.
 
-Person mode takes a photo and/or an email, a phone number, or a name. It uses web search and Gravatar, and it files a name, a role, and accounts when `file_person` is called. `found` is only for a person the evidence ties to this photo, email, or phone. A same-name hit with no second tie is not `found`. It needs an API key.
+Person mode does not identify a person. It does not search the web, does not call Gravatar, and does not send the photo out. It files `found: false` and an empty name (`app/limits.py`).
 
-Plate mode reads the plate characters and names the vehicle. The prompt tells the model to leave the owner empty and not to search for one. It needs an API key.
+Plate mode reads the plate characters and names the vehicle. The owner field is cleared in code. The prompt says not to search for an owner. It needs an API key.
 
 The car module's prompt says not to read the plate. Find Region and Find Street tell the model a plate counts only by style, colours, and country or region code.
 
-`B-PRIV-01` stays open. The contradiction is in the code: region and street stop at the city for a private person or a private home; private-place and person do not. Plate still reads the characters. The plate prompt no longer asks for an owner. Those modules were not given new sources.
+`B-PRIV-01` is closed. Private-place mode stops at the city in the prompt and again when the answer is filed. Person mode does not match a photo, email, phone, or name to a person. Plate mode still reads the characters and does not record an owner.
 
 | Module | What the code does |
 |---|---|
 | تحديد المنطقة (Find Region) | Country / region / city and a radius. Private homes and private people stop at city level in this mode. |
 | تحديد الشارع (Find Street) | MegaLoc sweeps, terrain skyline, satellite tool. Same city-level stop for a private home. |
-| تحديد مكان خاص (Private place) | Separate prompt. Does not stop at the city. Can search listing text and pin a building when a listing or a text anchor matches. May read a plate. Does not name an owner from it. |
-| من هذا الشخص؟ (Who is this?) | Photo and/or email, phone, or name. Web search and Gravatar. A same name is not a found person. Needs an API key. |
-| لوحة السيارة (Plate) | Reads the characters and names the vehicle. Does not guess or look up an owner. Needs an API key. |
+| تحديد مكان خاص (Private place) | Stops at the city. Does not pin a building, a school, or a routine. Listing search is refused. |
+| من هذا الشخص؟ (Who is this?) | Does not identify a person. `found` is false. No web search and no Gravatar. |
+| لوحة السيارة (Plate) | Reads the characters and names the vehicle. The owner field is cleared. Needs an API key. |
 | التحقق من الصورة (Verify Image) | Metadata and error-level analysis always. With a key, one model reading: an assessment, two likelihoods, and signals. No named-generator list and no separate face-swap score. Without a key the assessment is inconclusive and the local checks still run. |
 | تحديد السيارة (Identify Car) | One make, model, year range, and body type. Not ten ranked candidates and not reference images. The prompt does not read the plate. Needs an API key. |
 | القضايا (Cases) | Cases on one map. Confirm writes `truth.json`. Possible and dismissed mark the pin and do not write or replace a truth. |
@@ -75,7 +75,7 @@ Each case is a folder `<date>_saqr-<name>-<id>\` with `report.md` (also served a
 
 ## Privacy, terms, retention
 
-One user, on 127.0.0.1. No SAQR account. [Privacy](web/legal/privacy.html), [terms](web/legal/terms.html), and [retention](web/legal/retention.html) name person search, plate reading, and private-place mode. The help panel links the same pages. The help text does not say the product refuses private homes and identities.
+One user, on 127.0.0.1. No SAQR account. [Privacy](web/legal/privacy.html), [terms](web/legal/terms.html), and [retention](web/legal/retention.html) name the person refusal, plate reading, and the city stop. The help panel says the same thing.
 
 ## How it works
 
@@ -89,7 +89,7 @@ The interface is a dark frosted-glass layout over MapLibre GL JS 4.7.1 (vendored
 
 - A tight point still needs an anchor (readable text, a distinctive skyline, a covered road). The region/street prompt says a generic landscape stays wide, and lookalike Gulf cities are not to be defaulted to Dubai.
 - Street-level search defaults to Mapillary. Google Street View, Google satellite tiles, and Apple, Bing, and Yandex panoramas each need their own key: `SAQR_GOOGLE_KEY` or `GOOGLE_MAPS_API_KEY`, `SAQR_APPLE_KEY`, `SAQR_BING_KEY`, `SAQR_YANDEX_KEY`. One Google key does not unlock the others. `streetview_near` and `streetview_views` call Google and refuse without that key.
-- The قمر صناعي toggle is Esri World Imagery (`server.arcgisonline.com`, zoom 3–19). The map credits Esri, Maxar, Earthstar Geographics, and the GIS User Community. The agent `satellite` tool defaults to `esri` and clamps that source at zoom 19. Wayback is not called. Google satellite still needs a Google key. Bing satellite is still forwarded to GeoInt when the model asks for `bing`.
+- The قمر صناعي toggle is Esri World Imagery (`server.arcgisonline.com`, zoom 3–19). The map credits Esri, Maxar, Earthstar Geographics, and the GIS User Community. The agent `satellite` tool defaults to `esri` and clamps that source at zoom 19. Wayback is still refused. It was not restored. Google satellite still needs a Google key. Bing satellite needs `SAQR_BING_KEY`. A Google key does not unlock it.
 - Verify does not name a generator and does not emit a separate face-swap score. Car is one vehicle object, not a ranked ten with reference photos. There is no video mode.
 - Each AI analysis spends provider credit. Find Street is allowed more tool use than Find Region.
 

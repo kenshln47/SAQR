@@ -24,4 +24,8 @@ ADR-011. Esri World Imagery is the satellite layer again, on the map and as the 
 
 ADR-012. If `tiles.openfreemap.org` fails or rate-limits, the map stops and the rest of SAQR keeps running. There is no automatic second free tile host. The replacement is explicit: edit `web/vendor/ofm-dark.json` so its sources point at a paid vector-tile endpoint or at a self-hosted OpenMapTiles/Planetiler or Protomaps server. Paid is the path when the operator will not run a tile server. Self-host is the path when tiles must not leave the machine. Neither is downloaded by setup.
 
+ADR-013. Bing satellite needs `SAQR_BING_KEY`, same rule as Bing panoramas. A Google key does not unlock it. Wayback (`wayback:YYYY`) is still refused. It was not restored when Esri World Imagery came back. It is a different archive and this build does not call it.
+
+ADR-014. The lock and `scripts/setup.sh` agree on the default torch: the CPU index `https://download.pytorch.org/whl/cpu`. `setup.sh` uses `https://download.pytorch.org/whl/cu130` only when `nvidia-smi -L` succeeds. `setup.bat` still tries cu130 first and then the PyPI default. That Windows path does not match the lock. `streetlevel` stays `--no-deps` in setup. The lock's metadata for it lists only packages already pinned in `requirements.txt`. `pyfrpc`, `pyexiv2`, `pytest`, `pytest-asyncio`, and `cython` are omitted: `pyfrpc` does not build on Windows and is Mapy.cz only; the others are not required for the panorama providers SAQR calls.
+
 

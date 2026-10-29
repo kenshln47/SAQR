@@ -192,9 +192,9 @@
     <div class="modes">
       <button class="mode active" data-mode="region"><span data-i="globe"></span><b>تحديد المنطقة</b><small>دولة · مدينة · نطاق</small></button>
       <button class="mode" data-mode="street"><span data-i="pin"></span><b>تحديد الشارع</b><small>تحليل عميق · Street View</small></button>
-      <button class="mode" data-mode="private"><span data-i="home"></span><b>تحديد مكان خاص</b><small>بيت · مدرسة · شغل</small></button>
-      <button class="mode" data-mode="person"><span data-i="user"></span><b>من هذا الشخص؟</b><small>صورة · إيميل · جوال · اسم</small></button>
-      <button class="mode" data-mode="plate"><span data-i="car"></span><b>لوحة السيارة</b><small>قراءة اللوحة · المركبة</small></button>
+      <button class="mode" data-mode="private"><span data-i="home"></span><b>تحديد مكان خاص</b><small>يوقف عند المدينة</small></button>
+      <button class="mode" data-mode="person"><span data-i="user"></span><b>من هذا الشخص؟</b><small>لا يطابق شخصاً</small></button>
+      <button class="mode" data-mode="plate"><span data-i="car"></span><b>لوحة السيارة</b><small>قراءة اللوحة · بدون مالك</small></button>
       <button class="mode" data-mode="verify"><span data-i="shield"></span><b>التحقق من الصورة</b><small>تعديل · توليد بالذكاء</small></button>
       <button class="mode" data-mode="car"><span data-i="car"></span><b>هوية السيارة</b><small>الماركة · الموديل · السنة</small></button>
     </div>
@@ -263,7 +263,7 @@
       <p><b>إيقاف وإعادة:</b> زر الإيقاف يوقف التحليل بعد الخطوة الحالية. زر الإعادة يحلل نفس الصورة من جديد بنوع ثاني أو بالنموذج اللي اخترته الحين، والقضية القديمة تبقى للمقارنة.</p>
       <p><b>مفتاح API:</b> بدونه يشتغل بالنماذج المحلية بس (دولة/منطقة تقريبية). من الإعدادات ⚙ اختر OpenRouter (أي نموذج: Claude أو GPT أو Gemini…) أو Anthropic مباشرة، والصق مفتاحك.</p>
       <p><b>البحث العكسي:</b> شغّال افتراضياً، وينحفظ اختيارك في هذا المتصفح. إذا بقي شغّال، الصورة تنرسل لـ Yandex و Baidu. شيل العلامة لو الصورة حساسة.</p>
-      <p class="dim">تحديد المنطقة وتحديد الشارع يوقفان عند المدينة إذا الصورة شخص أو بيت خاص. تحديد المكان الخاص ما يوقف هناك، ويقدر يثبت مبنى. «من هذا الشخص؟» يبحث بالصورة أو الإيميل أو الجوال أو الاسم. لوحة السيارة تقرأ الأحرف وتبحث عنها.</p>
+      <p class="dim">تحديد المنطقة وتحديد الشارع يوقفان عند المدينة إذا الصورة شخص أو بيت خاص. تحديد المكان الخاص يوقف عند المدينة كذلك ولا يثبت مبنى. «من هذا الشخص؟» لا يطابق شخصاً. لوحة السيارة تقرأ الأحرف ولا تسجّل مالكاً.</p>
       <p><a href="/legal/privacy.html">الخصوصية</a> · <a href="/legal/terms.html">الشروط</a> · <a href="/legal/retention.html">الاحتفاظ بالملفات</a></p>
     </div>
   </div>

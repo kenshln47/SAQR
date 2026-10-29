@@ -588,7 +588,7 @@ function updateEngine(s) {
   if (!s.claude && state.mode === "car") $('.mode[data-mode="region"]').click();
   $("#modeHint").classList.toggle("hidden", s.claude);
   $('#rerunMenu [data-mode="car"]').disabled = !s.claude;
-  [["person", "صورة · إيميل · جوال · اسم"], ["plate", "قراءة اللوحة · المركبة"]].forEach(([m, t]) => {
+  [["person", "لا يطابق شخصاً"], ["plate", "قراءة اللوحة · بدون مالك"]].forEach(([m, t]) => {
     const b = $(`.mode[data-mode="${m}"]`); b.classList.toggle("needkey", !s.claude); $("small", b).textContent = s.claude ? t : "يحتاج مفتاح API";
     $(`#rerunMenu [data-mode="${m}"]`).disabled = !s.claude;
   });

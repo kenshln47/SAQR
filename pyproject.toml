@@ -37,7 +37,18 @@ dev = ["pytest>=8", "ruff>=0.8"]
 [tool.uv]
 package = false
 
-# pyfrpc is Mapy.cz-only and does not build on Windows. setup.sh installs streetlevel with --no-deps.
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+torchvision = { index = "pytorch-cpu" }
+
+# pyfrpc is Mapy.cz-only and does not build on Windows.
+# pyexiv2, pytest, pytest-asyncio, and cython are declared by streetlevel and are not installed:
+# setup.sh uses --no-deps, and those packages are not required for the panorama providers SAQR calls.
 [[tool.uv.dependency-metadata]]
 name = "streetlevel"
 version = "0.12.13"
@@ -45,16 +56,12 @@ requires-dist = [
     "aiohttp",
     "bd09convertor",
     "coordinatesconverter",
-    "cython",
     "numpy",
     "pillow",
     "protobuf>4",
     "pycryptodome",
     "pyequilib",
-    "pyexiv2",
     "pyproj",
-    "pytest",
-    "pytest-asyncio",
     "requests",
     "scipy",
 ]

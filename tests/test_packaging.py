@@ -27,10 +27,15 @@ def test_lock_records_torch_and_streetlevel_without_pyfrpc() -> None:
     assert 'name = "streetlevel"' in lock
     assert "pyfrpc" not in lock
     workflow = (ROOT / ".github" / "workflows" / "test.yml").read_text(encoding="utf-8")
-    assert "torch" not in workflow
+    assert "uv pip install --python .venv/bin/python pytest ruff pillow" in workflow
+    assert "https://download.pytorch.org/whl/cpu" in workflow
     requirements = (ROOT / "requirements.txt").read_text(encoding="utf-8")
     assert "torch==" not in requirements
     assert "streetlevel==" not in requirements
+    setup = (ROOT / "scripts" / "setup.sh").read_text(encoding="utf-8")
+    assert "nvidia-smi" in setup
+    assert "https://download.pytorch.org/whl/cpu" in setup
+    assert "https://download.pytorch.org/whl/cu130" in setup
 
 
 def test_shell_entrypoints_exist_and_bind_locally() -> None:

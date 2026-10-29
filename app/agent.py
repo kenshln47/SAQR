@@ -13,6 +13,7 @@ from . import tools as T
 from .cases import Case
 from .config import EFFORT, MAX_TURNS, engine_label, has_ai, model_name, provider
 from .context import clip_text, context_token_budget, prune_messages, recon_token_budget, usage_delta
+from .limits import listing_block, private_final
 from .report import write_report
 
 SYSTEM = """You are SAQR, a photo geolocation analyst running on the user's own computer.
@@ -49,25 +50,22 @@ Limits you must keep
 """
 
 PRIVATE_NOTE = """
-Private-place mode. This prompt stands alone. It does not include the region/street system text, and there is
-no city-level stop written above this line to relax. Region and street mode stop at the city for a private home
-or a private person. This mode does not.
+Private-place mode. This prompt stands alone. It does not include the region/street system text.
+
+This mode stops at the city for a private home, a school, or a routine. Do not pin the building.
+Do not name the school, the workplace, or the routine. Do not search listings for a door.
 
 Do not invent a tool result. If you did not run the tool, the claim is an unverified estimate.
-Do not invent a building. An honest district beats a wrong door.
+Do not invent a building.
 A plate may be read as a location anchor. Do not guess, infer, or name an owner from it.
-Pin the building and set level="point" only when a listing or a text anchor already ties that building to the photo.
-Otherwise file the best district and say why the building was not pinned.
-listing_search queries Airbnb, aqar.fm, Bayut, and Haraj by text. It is not a photo index.
-A school or a routine photo is still this mode: name the place the evidence supports, and do not invent the door.
+File level city. A street or a point is not an answer in this mode.
 """
 
 MODE_HINT = {
     "region": "Mode: FIND REGION (quick). Aim for country, region and city with an honest radius. Use at most ~12 tool calls.",
     "street": ("Mode: FIND STREET (deep). Push to the street or camera point when the evidence allows: narrow, then "
                "street-level checks, sweeps, terrain and satellite evidence. Stop when one strong constraint is confirmed, or two weaker ones agree. If neither holds, still file the best city or district with a wider radius."),
-    "private": ("Mode: PRIVATE PLACE (بيت · مدرسة · شغل · روتين). The subject is a private home, a school or ordinary "
-                "people, so push past the city when the evidence allows. Same tools, deeper ladder."),
+    "private": "Mode: PRIVATE PLACE. Stop at the city. Do not pin a building, a school, or a routine.",
 }
 
 NUM = {"type": "number"}
@@ -86,7 +84,7 @@ TOOLS = [
                                                  "Also open: kartaview, panoramax. google, apple, bing and yandex are refused unless their own key is set."),
      "input_schema": {"type": "object", "properties": {"lat": NUM, "lon": NUM, "radius_m": {"type": "integer"},
                       "provider": {"type": "string"}}, "required": ["lat", "lon"], "additionalProperties": False}},
-    {"name": "satellite", "description": "Satellite tile mosaic centred on a point. Default source is esri (World Imagery, zoom 3-19, attribution Esri, Maxar, Earthstar Geographics, and the GIS User Community). google and google-hybrid need SAQR_GOOGLE_KEY or GOOGLE_MAPS_API_KEY. bing is the other source the tool will call. wayback is refused. The map toggle is this same Esri layer, not a separate low-resolution basemap.",
+    {"name": "satellite", "description": "Satellite tile mosaic centred on a point. Default source is esri (World Imagery, zoom 3-19, attribution Esri, Maxar, Earthstar Geographics, and the GIS User Community). google and google-hybrid need SAQR_GOOGLE_KEY or GOOGLE_MAPS_API_KEY. bing needs SAQR_BING_KEY. A Google key does not unlock Bing. wayback is still refused and was not restored. The map toggle is this same Esri layer, not a separate low-resolution basemap.",
      "input_schema": {"type": "object", "properties": {"lat": NUM, "lon": NUM, "zoom": {"type": "integer"}, "source": {"type": "string"}},
                       "required": ["lat", "lon"], "additionalProperties": False}},
     {"name": "terrain_view", "description": "Render the elevation-model skyline seen from a camera point and heading, stacked over the photo for comparison.",
@@ -191,13 +189,17 @@ def _run_tool(case: Case, name: str, inp: dict) -> T.ToolOut:
     if name == "osm_query":
         return T.osm_query(inp["overpass_ql"])
     if name == "listing_search":
+        blocked = listing_block(case.load().get("mode"))
+        if blocked:
+            return T.ToolOut(blocked, is_error=True)
         return T.listing_search(inp["query"], inp.get("sites", ""))
     if name == "pin_candidate":
         case.add_candidate({k: inp[k] for k in ("lat", "lon", "label", "confidence", "radius_km", "reason")})
         return T.ToolOut("pinned")
     if name == "final_answer":
-        case.update(final=inp)
-        case.emit("final", final=inp)
+        filed = private_final(inp) if case.load().get("mode") == "private" else inp
+        case.update(final=filed)
+        case.emit("final", final=filed)
         return T.ToolOut("filed")
     return T.ToolOut(f"unknown tool {name}", is_error=True)
 

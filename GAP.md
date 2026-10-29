@@ -27,15 +27,15 @@ Not in the tree: a scored worldwide region model, a SAQR photo corpus, or video-
 
 The page describes meter-level candidates inside a region the investigator selects, with no street sign, house number, or metadata required, plus reference imagery and a Compare in Street View step. The example on the page is 8982 Lillyhammer Court, Las Vegas. It attributes the match to proprietary CV models and says a search region is required.
 
-SAQR mode `street` can run MegaLoc panorama sweeps, a terrain skyline, and the satellite tool. The default panorama provider is Mapillary. Kartaview and Panoramax are the other open ones. Google, Apple, Bing, and Yandex panoramas each stay off without their own key. The agent's satellite tool defaults to `esri` World Imagery and clamps it at zoom 19. Wayback is refused. Bing satellite is still passed through with no key of its own. The map's satellite toggle is the same Esri layer. There is no Compare in Street View surface. Nothing in this repo measures meter-level error. The street prompt still wants an anchor; a generic landscape stays wide. No day cost.
+SAQR mode `street` can run MegaLoc panorama sweeps, a terrain skyline, and the satellite tool. The default panorama provider is Mapillary. Kartaview and Panoramax are the other open ones. Google, Apple, Bing, and Yandex panoramas each stay off without their own key. The agent's satellite tool defaults to `esri` World Imagery and clamps it at zoom 19. Wayback is still refused and was not restored. Bing satellite needs `SAQR_BING_KEY`. The map's satellite toggle is the same Esri layer. There is no Compare in Street View surface. Nothing in this repo measures meter-level error. The street prompt still wants an anchor; a generic landscape stays wide. No day cost.
 
 ## find-property — PARTIAL
 
 The page marks this Beta. It describes one supported city (the example is San Francisco), interior or exterior, about twenty candidates with address, postcode, lat/lon, property photos, and a similarity score it says is not a probability. Review states on the page are confirmed, possible, and dismissed. It says the search cannot cover multiple cities at once and that every result should be visually corroborated.
 
-This tree has no city property-imagery index and does not return about twenty addresses with property photos. What it has is a different path, and it is not a substitute. Mode `private` does not send `SYSTEM`. The assignment is `PRIVATE_NOTE` instead (`H-PROMPT-01`). That text tells the model the city-level stop is relaxed, to pin a building when a listing or a text anchor matches, to match a school, to name a place from a routine photo, and that a family plate may be read and searched. `listing_search` is a text query through DuckDuckGo against `airbnb.com`, `aqar.fm`, `bayut.sa`, and `haraj.com.sa`. It does not compare the photo to a property corpus. Pin review states confirmed / possible / dismissed exist; only confirmed writes `truth.json`.
+This tree has no city property-imagery index and does not return about twenty addresses with property photos. Mode `private` stops at the city. `PRIVATE_NOTE` says not to pin a building, a school, or a routine. `listing_search` is refused in that mode. Pin review states confirmed / possible / dismissed exist; only confirmed writes `truth.json`.
 
-PARTIAL because the listing-text search and the private-place prompt exist. The visual corpus the page describes does not. Not built here, and the private-place prompt is not extended (`B-PRIV-01` stays open). No day cost on this row. A visual city index would be a separate product from the prompt that is already there.
+PARTIAL because the geolocation tools exist and the property-photo corpus the page describes does not. Private-place targeting was not extended. `B-PRIV-01` is closed by the city stop, not by a listing match. No day cost on this row.
 
 ## short-term-rental — MISSING
 
@@ -49,7 +49,7 @@ Day cost: **60 engineering days, estimate, not a measured plan.** Counted only i
 
 The page describes an email or phone lookup (a place lookup is also on that form). It says the check returns public accounts, usernames, reviews, and images, with source and date, run at submit time. Reviews are pinned at the reviewed place, not at the author's current location. Images can be sent on to Find Region or Find Street. The page says the product does not log in, does not read private messages, does not obtain nonpublic records, and does not prove ownership or current location.
 
-SAQR mode `person` (`run_person` in `app/identify.py`) accepts a photo and/or an email, a phone number, or a name. Tools are `view_photo`, `web_lookup` (DuckDuckGo), `gravatar_lookup`, the provider web search when that run has it, and `file_person` (name, role, accounts). It needs an API key. It does not store a source and a date on every hit, and it does not pin a review at the reviewed place. This phase does not add sources.
+SAQR mode `person` (`run_person` in `app/identify.py`) accepts a photo and/or an email, a phone number, or a name and does not look any of them up. It does not call the model, the web, Gravatar, or recon. It files `found: false`, an empty name, and empty accounts. That is a refusal, not the lookup the page describes. This phase does not add sources.
 
 ## identify-car — PARTIAL
 

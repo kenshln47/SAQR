@@ -188,7 +188,7 @@ def streetview_sweep(case: Case, lat: float, lon: float, radius_m: int = 3000, p
 
 def satellite(case: Case, lat: float, lon: float, zoom: int = 18, source: str = "esri", size: int = 900) -> ToolOut:
     if not SAT_SOURCE.fullmatch(source or ""):
-        return ToolOut("unknown source: use esri, google, google-hybrid, or bing. wayback is not called", is_error=True)
+        return ToolOut("unknown source: use esri, or google, google-hybrid, or bing with that source's key. wayback is not called", is_error=True)
     blocked = satellite_block_reason(source)
     if blocked:
         return ToolOut(blocked, is_error=True)
